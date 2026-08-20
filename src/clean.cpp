@@ -46,17 +46,8 @@ bool moveToTrashPosix(const std::string& path, std::string& err) {
   }
   fs::rename(src, dest, ec);
   if (!ec) return true;
-  fs::copy(src, dest, fs::copy_options::recursive | fs::copy_options::copy_symlinks, ec);
-  if (ec) {
-    err = ec.message();
-    return false;
-  }
-  fs::remove_all(src, ec);
-  if (ec) {
-    err = ec.message();
-    return false;
-  }
-  return true;
+  err = "could not move to Trash (" + ec.message() + ")";
+  return false;
 }
 
 #if defined(_WIN32)
