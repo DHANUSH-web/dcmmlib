@@ -153,7 +153,7 @@ ScanGroup scanCatalogEntry(const CatalogEntry& entry, std::atomic<bool>* cancel,
     it.detail = path;
     it.bytes = sc.bytes;
     it.fileCount = sc.files ? sc.files : 1;
-    it.selected = !entry.reviewFirst;
+    it.selected = false;
     it.reviewFirst = entry.reviewFirst;
     g.items.push_back(std::move(it));
   };

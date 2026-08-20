@@ -103,7 +103,7 @@ ScanItem leftoverItem(const std::string& path) {
   auto sc = directorySize(path, nullptr, nullptr);
   it.bytes = sc.bytes;
   it.fileCount = sc.files ? sc.files : 1;
-  it.selected = true;
+  it.selected = false;
   return it;
 }
 
@@ -184,9 +184,7 @@ void Engine::attachLeftovers(InstalledApp& app) {
     consider(joinPath(joinPath(home, "Library/Saved Application State"), leaf + ".savedState"));
     consider(joinPath(joinPath(home, "Library/Containers"), leaf));
     consider(joinPath(joinPath(home, "Library/LaunchAgents"), leaf + ".plist"));
-    consider(joinPath(joinPath(home, ".config"), leaf));
     consider(joinPath(joinPath(home, ".cache"), leaf));
-    consider(joinPath(joinPath(home, ".local/share"), leaf));
   };
   if (!app.bundleId.empty()) support(app.bundleId);
   if (!app.name.empty() && app.name != app.bundleId) support(app.name);
