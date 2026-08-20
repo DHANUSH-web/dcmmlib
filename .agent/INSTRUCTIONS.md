@@ -147,6 +147,17 @@ Use `#if defined(_WIN32)` / `__APPLE__` / else Linux. Keep Windows Recycle Bin a
 
 GoogleTest via FetchContent (v1.15.2). Add tests when changing safety, hashing, format, or catalogs. Existing coverage includes safety (root, Documents, SSH, Application Support, cache children, sensitive names), SHA-256 vectors, C ABI, duplicates, disk.
 
+## Commits
+
+Every commit subject must be `KIND: message` with **KIND in uppercase**:
+
+- **FEAT:** new API, catalog, tests, or capability
+- **FIX:** a bug, safety hole, wrong size/path, or regression
+
+Examples: `FEAT: Split Smart Scan groups from System Junk.` / `FIX: Do not double-count Homebrew cache.`
+
+Do not use Conventional Commits (`feat:` lowercase, scopes, types like `chore`). Split mixed work into a FEAT commit and a FIX commit. Subject after the colon is imperative, like the rest of this repo.
+
 ## How to change this library
 
 - Put new public types in `types.hpp` and new engine methods on `Engine`.
