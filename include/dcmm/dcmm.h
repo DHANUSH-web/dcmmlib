@@ -49,6 +49,7 @@ DCMM_API dcmm_engine* dcmm_create(void);
 DCMM_API void dcmm_destroy(dcmm_engine* engine);
 DCMM_API void dcmm_cancel(dcmm_engine* engine);
 
+DCMM_API int dcmm_scan_smart(dcmm_engine* engine, dcmm_progress_fn fn, void* user);
 DCMM_API int dcmm_scan_junk(dcmm_engine* engine, dcmm_progress_fn fn, void* user);
 DCMM_API int dcmm_scan_privacy(dcmm_engine* engine, dcmm_progress_fn fn, void* user);
 

@@ -38,6 +38,47 @@ TEST_F(CatalogEnv, JunkFindsCache) {
   EXPECT_TRUE(found);
 }
 
+TEST_F(CatalogEnv, SmartRecommendsCachesAsOneGroup) {
+  dcmm::Engine e;
+  auto r = e.scanSmart();
+  EXPECT_GE(r.totalBytes(), 2048u);
+  bool foundCaches = false;
+  bool foundChildName = false;
+  bool foundNpm = false;
+  for (const auto& g : r.groups) {
+    EXPECT_EQ(g.items.size(), 1u);
+    EXPECT_TRUE(g.items[0].selected);
+    if (g.id == "user_caches") {
+      foundCaches = true;
+      EXPECT_EQ(g.items[0].displayName, "User Caches");
+    }
+    for (const auto& it : g.items) {
+      if (it.displayName == "com.example.Junk") foundChildName = true;
+      if (it.path.find(".npm") != std::string::npos) foundNpm = true;
+    }
+  }
+  EXPECT_TRUE(foundCaches);
+  EXPECT_FALSE(foundChildName);
+  EXPECT_FALSE(foundNpm);
+}
+
+TEST_F(CatalogEnv, TrashCachesRootMovesChildrenNotFolder) {
+  auto trash = fs::temp_directory_path() / "dcmm-catalog-trash";
+  fs::remove_all(trash);
+  fs::create_directories(trash);
+  setenv("DCMM_TRASH", trash.string().c_str(), 1);
+  auto caches = home / "Library" / "Caches";
+  auto child = caches / "com.example.Junk";
+  ASSERT_TRUE(fs::exists(child));
+  dcmm::Engine e;
+  auto result = e.trashPaths({caches.string()});
+  EXPECT_GE(result.trashedItems, 1u);
+  EXPECT_FALSE(fs::exists(child));
+  EXPECT_TRUE(fs::exists(caches));
+  unsetenv("DCMM_TRASH");
+  fs::remove_all(trash);
+}
+
 TEST_F(CatalogEnv, CAbiScan) {
   // covered in test_c_abi with the same env
   SUCCEED();

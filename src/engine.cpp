@@ -28,6 +28,15 @@ ScanReport Engine::scanCatalog(const std::vector<CatalogEntry>& entries, const P
   return report;
 }
 
+ScanReport Engine::scanSmart(const ProgressFn& progress) {
+  resetCancel();
+  auto report = scanCatalog(smartCatalog(), progress);
+  for (auto& g : report.groups)
+    for (auto& it : g.items) it.selected = true;
+  lastScan_ = report;
+  return report;
+}
+
 ScanReport Engine::scanJunk(const ProgressFn& progress) {
   resetCancel();
   return scanCatalog(junkCatalog(), progress);

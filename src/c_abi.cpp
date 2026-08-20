@@ -35,24 +35,29 @@ void dcmm_cancel(dcmm_engine* engine) {
   if (engine) engine->impl.cancel();
 }
 
-static int runScan(dcmm_engine* engine, dcmm_progress_fn fn, void* user, bool privacy) {
+static int runScan(dcmm_engine* engine, dcmm_progress_fn fn, void* user, int kind) {
   if (!engine) return -1;
   dcmm::ProgressFn cb;
   if (fn) {
     cb = [fn, user](const std::string& p, uint64_t v, uint64_t b) { fn(p.c_str(), v, b, user); };
   }
-  if (privacy)
+  if (kind == 1)
     engine->impl.scanPrivacy(cb);
+  else if (kind == 2)
+    engine->impl.scanSmart(cb);
   else
     engine->impl.scanJunk(cb);
   return 0;
 }
 
+int dcmm_scan_smart(dcmm_engine* engine, dcmm_progress_fn fn, void* user) {
+  return runScan(engine, fn, user, 2);
+}
 int dcmm_scan_junk(dcmm_engine* engine, dcmm_progress_fn fn, void* user) {
-  return runScan(engine, fn, user, false);
+  return runScan(engine, fn, user, 0);
 }
 int dcmm_scan_privacy(dcmm_engine* engine, dcmm_progress_fn fn, void* user) {
-  return runScan(engine, fn, user, true);
+  return runScan(engine, fn, user, 1);
 }
 
 static const dcmm::ScanReport* report(const dcmm_engine* e) {

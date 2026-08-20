@@ -70,30 +70,45 @@ bool moveToTrashWin(const std::string& path, std::string& err) {
 
 }  // namespace
 
+std::vector<std::string> expandTrashTargets(const std::string& p) {
+  std::vector<std::string> out;
+  if (p.empty()) return out;
+  if (isJunkCategoryRoot(p)) {
+    forEachChild(p, [&](const std::string&, const std::string& full, bool) {
+      if (isSafeToTrash(full)) out.push_back(full);
+    });
+    return out;
+  }
+  if (isSafeToTrash(p)) out.push_back(p);
+  return out;
+}
+
 CleanResult Engine::trashPaths(const std::vector<std::string>& paths) {
   CleanResult result;
   for (const auto& p : paths) {
-    if (p.empty()) continue;
-    if (!isSafeToTrash(p)) {
+    auto targets = expandTrashTargets(p);
+    if (targets.empty()) {
       result.failedItems++;
       result.errors.push_back("Blocked (protected path): " + p);
       continue;
     }
-    auto sc = directorySize(p, nullptr, nullptr);
-    std::string err;
-    bool ok = false;
+    for (const auto& t : targets) {
+      auto sc = directorySize(t, nullptr, nullptr);
+      std::string err;
+      bool ok = false;
 #if defined(_WIN32)
-    ok = moveToTrashWin(p, err);
+      ok = moveToTrashWin(t, err);
 #else
-    ok = moveToTrashPosix(p, err);
+      ok = moveToTrashPosix(t, err);
 #endif
-    if (!ok) {
-      result.failedItems++;
-      result.errors.push_back(p + ": " + err);
-      continue;
+      if (!ok) {
+        result.failedItems++;
+        result.errors.push_back(t + ": " + err);
+        continue;
+      }
+      result.trashedItems++;
+      result.trashedBytes += sc.bytes;
     }
-    result.trashedItems++;
-    result.trashedBytes += sc.bytes;
   }
   return result;
 }

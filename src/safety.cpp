@@ -6,6 +6,11 @@
 #include <string>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 namespace dcmm {
 namespace {
 
@@ -163,16 +168,9 @@ bool isProtectedPath(const std::string& raw) {
   return false;
 }
 
-bool isSafeToTrash(const std::string& raw) {
-  if (isProtectedPath(raw)) return false;
-  const std::string path = norm(raw);
-  if (path.empty()) return false;
-  if (isSensitiveFileName(lastComponent(path))) return false;
-
+std::vector<std::string> junkCategoryRoots() {
   const std::string home = homeDirectory();
-
-  // Regenerable junk only — never whole containers like Application Support.
-  const std::vector<std::string> junk = {
+  return {
       joinPath(home, "Library/Caches"),
       joinPath(home, "Library/Logs"),
       joinPath(home, "Library/Saved Application State"),
@@ -196,11 +194,42 @@ bool isSafeToTrash(const std::string& raw) {
       "/opt/homebrew/var/cache",
       "/opt/homebrew/var/homebrew",
       "/usr/local/var/cache",
-      "/Library/Caches",
       "/private/var/tmp",
       "/tmp",
   };
-  for (const auto& p : junk) {
+}
+
+bool isOwnedByCurrentUser(const std::string& raw) {
+#if defined(_WIN32)
+  (void)raw;
+  return true;
+#else
+  struct stat st {};
+  if (lstat(raw.c_str(), &st) != 0) return false;
+  return st.st_uid == getuid();
+#endif
+}
+
+bool isJunkCategoryRoot(const std::string& raw) {
+  const std::string path = norm(raw);
+  if (path.empty()) return false;
+  for (const auto& p : junkCategoryRoots()) {
+    if (path == norm(p)) return true;
+  }
+  return false;
+}
+
+bool isSafeToTrash(const std::string& raw) {
+  if (isProtectedPath(raw)) return false;
+  const std::string path = norm(raw);
+  if (path.empty()) return false;
+  if (isSensitiveFileName(lastComponent(path))) return false;
+  if (pathExists(path) && !isOwnedByCurrentUser(path)) return false;
+
+  const std::string home = homeDirectory();
+
+  // Regenerable junk only — never the category folder itself (children only).
+  for (const auto& p : junkCategoryRoots()) {
     if (hasPrefix(path, p) && path != p) return true;
   }
 

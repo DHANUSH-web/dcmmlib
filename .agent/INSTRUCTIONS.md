@@ -29,7 +29,7 @@ C++ (preferred):
 ```cpp
 #include <dcmm/dcmm.hpp>
 dcmm::Engine e;
-auto report = e.scanJunk(progress);
+auto report = e.scanSmart(progress);
 auto result = e.trashPaths(paths);
 ```
 
@@ -39,7 +39,7 @@ Types: `include/dcmm/types.hpp`
 Safety: `include/dcmm/safety.hpp`  
 Paths/format: `include/dcmm/path.hpp`
 
-C ABI for FFI (`include/dcmm/dcmm.h`): `dcmm_create`, `dcmm_scan_junk`, `dcmm_scan_privacy`, `dcmm_trash_paths`, `dcmm_disk`, `dcmm_format_bytes`. Static builds define `DCMM_STATIC`.
+C ABI for FFI (`include/dcmm/dcmm.h`): `dcmm_create`, `dcmm_scan_smart`, `dcmm_scan_junk`, `dcmm_scan_privacy`, `dcmm_trash_paths`, `dcmm_disk`, `dcmm_format_bytes`. Static builds define `DCMM_STATIC`.
 
 Tests may set `DCMM_HOME` and `DCMM_TRASH` so scans never touch a real home directory.
 
@@ -58,7 +58,7 @@ Tests may set `DCMM_HOME` and `DCMM_TRASH` so scans never touch a real home dire
 | `cli/` | `dcmm-cli` smoke tool |
 | `cmake/llvm-clang.cmake` | Clang toolchain file |
 
-`dcmm::Engine` methods: `scanJunk`, `scanPrivacy`, `trashPaths`, `findLargeFiles`, `findDuplicates`, `spaceLens`, `listApps`, `attachLeftovers`, `disk`, `memory`, `maintenanceTasks`, `previewMaintenance`, `runMaintenance`.
+`dcmm::Engine` methods: `scanSmart`, `scanJunk`, `scanPrivacy`, `trashPaths`, `findLargeFiles`, `findDuplicates`, `spaceLens`, `listApps`, `attachLeftovers`, `disk`, `memory`, `maintenanceTasks`, `previewMaintenance`, `runMaintenance`.
 
 ## Build (required toolchain)
 
@@ -108,6 +108,13 @@ Default artifact: `libdcmm.a` (static). Apple links CoreFoundation; Windows link
 - Regenerable junk: user Caches, Logs, Saved Application State, HTTPStorages, Xcode DerivedData / DeviceSupport (review), Homebrew/pip/npm/gradle/cargo caches, per-user tmp, Trash contents as a scan category
 - User-selected **regular files** under home (large files / duplicates), still subject to protected trees
 - Third-party `.app` under `/Applications` or `~/Applications` — never `/System/Applications`
+- Skip files **not owned by the current user** (admin/system-owned). Never `/Library/Caches`.
+
+**Smart vs detailed catalogs**
+
+- `smartCatalog()` / `scanSmart()`: recommended groups only (on Apple: `~/Library/Caches`, Logs, Saved Application State as **one item each**, not per-child). Items start selected. No npm/cargo/Xcode/darwin tmp.
+- `junkCatalog()` / `scanJunk()`: every child folder for System Junk. Items start unselected. May include package-manager caches and review-first Xcode trees.
+- Trashing a **category root** (e.g. `~/Library/Caches`) expands to owned, safe children; the folder itself stays.
 
 **Trash behavior**
 
@@ -119,7 +126,8 @@ Default artifact: `libdcmm.a` (static). Apple links CoreFoundation; Windows link
 
 **Defaults**
 
-- `ScanItem.selected` defaults to **false** (opt-in). Catalog items must not auto-select on scan.
+- `scanSmart` / `scanJunk` / `scanPrivacy`: `ScanItem.selected` is **false** (opt-in).
+- `scanSmart`: items start **selected** (recommended groups).
 - Uninstaller leftovers default unselected.
 
 ## Maintenance IDs

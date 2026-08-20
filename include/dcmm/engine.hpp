@@ -20,6 +20,7 @@ class Engine {
   void resetCancel();
   bool cancelled() const;
 
+  ScanReport scanSmart(const ProgressFn& progress = nullptr);
   ScanReport scanJunk(const ProgressFn& progress = nullptr);
   ScanReport scanPrivacy(const ProgressFn& progress = nullptr);
 
@@ -52,6 +53,7 @@ class Engine {
   ScanReport lastScan_;
 };
 
+std::vector<CatalogEntry> smartCatalog();
 std::vector<CatalogEntry> junkCatalog();
 std::vector<CatalogEntry> privacyCatalog();
 

@@ -41,6 +41,16 @@ TEST(Safety, CacheChildAllowed) {
   EXPECT_TRUE(dcmm::isSafeToTrash(cache));
 }
 
+TEST(Safety, CacheFolderIsCategoryRootNotDirectlyTrashable) {
+  auto caches = dcmm::joinPath(dcmm::homeDirectory(), "Library/Caches");
+  EXPECT_TRUE(dcmm::isJunkCategoryRoot(caches));
+  EXPECT_FALSE(dcmm::isSafeToTrash(caches));
+}
+
+TEST(Safety, SystemLibraryCachesNotACategoryRoot) {
+  EXPECT_FALSE(dcmm::isJunkCategoryRoot("/Library/Caches"));
+}
+
 TEST(Safety, SshTreeBlocked) {
   EXPECT_TRUE(dcmm::isProtectedPath(dcmm::joinPath(dcmm::homeDirectory(), ".ssh/id_ed25519")));
 }

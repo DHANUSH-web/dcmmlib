@@ -31,13 +31,37 @@ std::string darwinDir(int name) {
 
 }  // namespace
 
+std::vector<CatalogEntry> smartCatalog() {
+  std::vector<CatalogEntry> out;
+  const std::string home = homeDirectory();
+#if defined(__APPLE__)
+  addIfExists(out, {"user_caches", "User Caches",
+                    "Everything in your Library/Caches except files you do not own",
+                    joinPath(home, "Library/Caches"), false, false, false});
+  addIfExists(out, {"logs", "User Logs", "Application logs in your home folder — regenerable",
+                    joinPath(home, "Library/Logs"), false, false, false});
+  addIfExists(out, {"saved_state", "Saved Application State",
+                    "Window positions and crash restoration data",
+                    joinPath(home, "Library/Saved Application State"), false, false, false});
+#elif defined(_WIN32)
+  if (const char* local = std::getenv("LOCALAPPDATA")) {
+    addIfExists(out, {"temp", "User Temp", "Temporary files in your profile",
+                      joinPath(local, "Temp"), false, false, false});
+  }
+#else
+  addIfExists(out, {"user_cache", "User Cache", "XDG cache directory", joinPath(home, ".cache"),
+                    false, false, false});
+#endif
+  return out;
+}
+
 std::vector<CatalogEntry> junkCatalog() {
   std::vector<CatalogEntry> out;
   const std::string home = homeDirectory();
 
 #if defined(__APPLE__)
   addIfExists(out, {"user_caches", "User Caches", "App caches in your Library — safe to rebuild",
-                    joinPath(home, "Library/Caches"), true, false, true});
+                    joinPath(home, "Library/Caches"), true, false, false});
   {
     auto userCache = darwinDir(_CS_DARWIN_USER_CACHE_DIR);
     if (!userCache.empty())
@@ -65,10 +89,8 @@ std::vector<CatalogEntry> junkCatalog() {
                     joinPath(home, "Library/Developer/Xcode/Archives"), true, true, false});
   addIfExists(out, {"sim_caches", "Simulator Caches", "Core Simulator download and runtime caches",
                     joinPath(home, "Library/Developer/CoreSimulator/Caches"), true, false, false});
-  addIfExists(out, {"brew", "Homebrew Cache", "Downloaded bottles and source tarballs",
-                    joinPath(home, "Library/Caches/Homebrew"), true, false, false});
-  addIfExists(out, {"brew_opt", "Homebrew Cache", "Homebrew shared cache", "/opt/homebrew/var/cache",
-                    true, false, false});
+  addIfExists(out, {"brew_opt", "Homebrew Cellar Cache", "Homebrew prefix cache (not Library/Caches)",
+                    "/opt/homebrew/var/cache", true, false, false});
   addIfExists(out, {"trash", "Trash", "Items already in the Trash", joinPath(home, ".Trash"), true,
                     false, false});
 #elif defined(_WIN32)
@@ -97,8 +119,6 @@ std::vector<CatalogEntry> junkCatalog() {
                     joinPath(home, ".gradle/caches"), true, false, false});
   addIfExists(out, {"cargo", "Cargo Registry Cache", "Rust crate download cache",
                     joinPath(home, ".cargo/registry/cache"), true, false, false});
-  addIfExists(out, {"go_build", "Go Build Cache", "Go compiler cache",
-                    joinPath(home, "Library/Caches/go-build"), true, false, false});
   addIfExists(out, {"composer", "Composer Cache", "PHP Composer cache",
                     joinPath(home, ".composer/cache"), true, false, false});
   return out;
@@ -144,6 +164,7 @@ ScanGroup scanCatalogEntry(const CatalogEntry& entry, std::atomic<bool>* cancel,
 
   auto addItem = [&](const std::string& path, const std::string& name) {
     if (cancel && cancel->load()) return;
+    if (pathExists(path) && !isOwnedByCurrentUser(path)) return;
     if (entry.skipBrowsers && isBrowserCacheName(name)) return;
     auto sc = directorySize(path, cancel, progress);
     if (sc.bytes == 0 && sc.files == 0) return;
@@ -163,8 +184,28 @@ ScanGroup scanCatalogEntry(const CatalogEntry& entry, std::atomic<bool>* cancel,
     forEachChild(entry.path, [&](const std::string& name, const std::string& full, bool) {
       addItem(full, name);
     });
+  } else if (isDirectory(entry.path)) {
+    SizeCount total;
+    forEachChild(entry.path, [&](const std::string& name, const std::string& full, bool) {
+      if (cancel && cancel->load()) return;
+      if (pathExists(full) && !isOwnedByCurrentUser(full)) return;
+      if (entry.skipBrowsers && isBrowserCacheName(name)) return;
+      auto sc = directorySize(full, cancel, progress);
+      total.bytes += sc.bytes;
+      total.files += sc.files;
+    });
+    if (total.bytes == 0 && total.files == 0) return g;
+    ScanItem it;
+    it.path = entry.path;
+    it.displayName = entry.groupTitle;
+    it.detail = entry.path;
+    it.bytes = total.bytes;
+    it.fileCount = total.files ? total.files : 1;
+    it.selected = false;
+    it.reviewFirst = entry.reviewFirst;
+    g.items.push_back(std::move(it));
   } else {
-    addItem(entry.path, displayName(entry.path));
+    addItem(entry.path, entry.groupTitle);
   }
   return g;
 }

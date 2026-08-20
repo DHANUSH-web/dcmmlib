@@ -7,7 +7,7 @@
 int main(int argc, char** argv) {
   std::string cmd = argc > 1 ? argv[1] : "disk";
   if (cmd == "-h" || cmd == "--help") {
-    std::cout << "dcmm-cli [disk|junk|privacy|version|c-abi]\n";
+    std::cout << "dcmm-cli [disk|smart|junk|privacy|version|c-abi]\n";
     return 0;
   }
   if (cmd == "version") {
@@ -33,8 +33,10 @@ int main(int argc, char** argv) {
               << dcmm::formatBytes(m.totalBytes) << "\n";
     return 0;
   }
-  if (cmd == "junk" || cmd == "privacy") {
-    auto r = (cmd == "privacy") ? engine.scanPrivacy() : engine.scanJunk();
+  if (cmd == "smart" || cmd == "junk" || cmd == "privacy") {
+    auto r = cmd == "privacy" ? engine.scanPrivacy()
+             : cmd == "smart"   ? engine.scanSmart()
+                                : engine.scanJunk();
     std::cout << cmd << " — " << dcmm::formatBytes(r.totalBytes()) << " in " << r.groups.size()
               << " groups (" << r.elapsedMs << " ms)\n";
     for (const auto& g : r.groups) {

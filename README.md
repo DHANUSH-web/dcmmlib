@@ -37,6 +37,7 @@ Produces `libdcmm.a` (default) and `dcmm-cli`.
 
 ```bash
 ./build/release/dcmm-cli disk
+./build/release/dcmm-cli smart
 ./build/release/dcmm-cli junk
 ```
 
