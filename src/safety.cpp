@@ -2,8 +2,8 @@
 
 #include "dcmm/path.hpp"
 
-#include <algorithm>
 #include <cctype>
+#include <string>
 #include <vector>
 
 namespace dcmm {
@@ -21,7 +21,34 @@ bool hasPrefix(const std::string& path, const std::string& prefix) {
   return path.size() == prefix.size() || path[prefix.size()] == '/' || path[prefix.size()] == '\\';
 }
 
+std::string lowerCopy(std::string s) {
+  for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  return s;
+}
+
+std::string lastComponent(const std::string& path) {
+  auto pos = path.find_last_of("/\\");
+  return pos == std::string::npos ? path : path.substr(pos + 1);
+}
+
 }  // namespace
+
+bool isSensitiveFileName(const std::string& name) {
+  const std::string n = lowerCopy(name);
+  static const char* exact[] = {"id_rsa",     "id_dsa", "id_ecdsa", "id_ed25519", ".env",
+                                "authorized_keys", "known_hosts", "credentials", nullptr};
+  for (int i = 0; exact[i]; ++i)
+    if (n == exact[i]) return true;
+  static const char* ext[] = {".pem",     ".key",  ".p12", ".pfx", ".p8",
+                              ".kdbx",    ".cer",  ".crt", ".asc", ".gpg",
+                              ".sparsebundle", ".sparseimage", ".wallet", nullptr};
+  for (int i = 0; ext[i]; ++i) {
+    auto e = ext[i];
+    auto elen = std::char_traits<char>::length(e);
+    if (n.size() >= elen && n.compare(n.size() - elen, elen, e) == 0) return true;
+  }
+  return false;
+}
 
 bool isBrowserCacheName(const std::string& name) {
   static const char* ids[] = {"com.apple.Safari",
@@ -55,11 +82,8 @@ bool isProtectedPath(const std::string& raw) {
   if (path.empty() || path == "/" || path == home) return true;
 
 #if defined(_WIN32)
-  if (hasPrefix(path, "C:\\Windows") || hasPrefix(path, "C:\\Program Files") ||
-      hasPrefix(path, "C:\\Program Files (x86)")) {
-    if (path == "C:\\Windows" || path == "C:\\Program Files" || path == "C:\\Program Files (x86)")
-      return true;
-  }
+  if (path == "C:\\Windows" || path == "C:\\Program Files" || path == "C:\\Program Files (x86)")
+    return true;
 #else
   if (path == "/Applications" || path == "/System" || path == "/Library") return true;
   static const char* prefixBlocks[] = {"/System",
@@ -81,6 +105,7 @@ bool isProtectedPath(const std::string& raw) {
                                        "/Library/Apple",
                                        "/Library/Documentation",
                                        "/System/Volumes",
+                                       "/System/Applications",
                                        nullptr};
   for (int i = 0; prefixBlocks[i]; ++i)
     if (hasPrefix(path, prefixBlocks[i])) return true;
@@ -98,6 +123,7 @@ bool isProtectedPath(const std::string& raw) {
 
   static const char* sensitive[] = {"Library/Keychains",
                                     "Library/Mail",
+                                    "Library/Safari",
                                     "Library/Messages",
                                     "Library/Calendars",
                                     "Library/Reminders",
@@ -106,6 +132,7 @@ bool isProtectedPath(const std::string& raw) {
                                     "Library/Application Support/MobileSync",
                                     "Library/Application Support/com.apple.TCC",
                                     "Library/Application Support/iCloud",
+                                    "Library/Application Support/CloudDocs",
                                     "Library/Mobile Documents",
                                     "Library/CloudStorage",
                                     "Library/Photos",
@@ -114,13 +141,17 @@ bool isProtectedPath(const std::string& raw) {
                                     "Library/PassKit",
                                     "Library/Sharing",
                                     "Library/IntelligencePlatform",
+                                    "Library/Biome",
+                                    "Library/Suggestions",
+                                    "Library/Wallet",
                                     "Library/Group Containers/com.apple.bird",
                                     "Library/Containers/com.apple.mail",
                                     "Library/Containers/com.apple.MobileSMS",
+                                    "Library/Containers/com.apple.Safari",
                                     ".ssh",
                                     ".gnupg",
                                     ".aws",
-                                    ".config/gcloud",
+                                    ".config",
                                     ".kube",
                                     ".password-store",
                                     nullptr};
@@ -128,6 +159,7 @@ bool isProtectedPath(const std::string& raw) {
     if (hasPrefix(path, joinPath(home, sensitive[i]))) return true;
 
   if (path.find(".photoslibrary") != std::string::npos) return true;
+  if (isSensitiveFileName(lastComponent(path))) return true;
   return false;
 }
 
@@ -135,21 +167,17 @@ bool isSafeToTrash(const std::string& raw) {
   if (isProtectedPath(raw)) return false;
   const std::string path = norm(raw);
   if (path.empty()) return false;
+  if (isSensitiveFileName(lastComponent(path))) return false;
+
   const std::string home = homeDirectory();
 
-  const std::vector<std::string> allow = {
+  // Regenerable junk only — never whole containers like Application Support.
+  const std::vector<std::string> junk = {
       joinPath(home, "Library/Caches"),
       joinPath(home, "Library/Logs"),
       joinPath(home, "Library/Saved Application State"),
       joinPath(home, "Library/HTTPStorages"),
       joinPath(home, "Library/WebKit"),
-      joinPath(home, "Library/Cookies"),
-      joinPath(home, "Library/Developer/Xcode/DerivedData"),
-      joinPath(home, "Library/Developer/Xcode/iOS DeviceSupport"),
-      joinPath(home, "Library/Developer/Xcode/watchOS DeviceSupport"),
-      joinPath(home, "Library/Developer/Xcode/tvOS DeviceSupport"),
-      joinPath(home, "Library/Developer/Xcode/Archives"),
-      joinPath(home, "Library/Developer/CoreSimulator/Caches"),
       joinPath(home, ".Trash"),
       joinPath(home, ".local/share/Trash"),
       joinPath(home, ".cache"),
@@ -159,22 +187,20 @@ bool isSafeToTrash(const std::string& raw) {
       joinPath(home, ".composer/cache"),
       joinPath(home, ".gradle/caches"),
       joinPath(home, ".cargo/registry/cache"),
-      joinPath(home, "Library/Application Support"),
-      joinPath(home, "Library/Preferences"),
-      joinPath(home, "Library/Containers"),
-      joinPath(home, "Library/Group Containers"),
-      joinPath(home, "Library/LaunchAgents"),
-      joinPath(home, "Applications"),
+      joinPath(home, "Library/Developer/Xcode/DerivedData"),
+      joinPath(home, "Library/Developer/Xcode/iOS DeviceSupport"),
+      joinPath(home, "Library/Developer/Xcode/watchOS DeviceSupport"),
+      joinPath(home, "Library/Developer/Xcode/tvOS DeviceSupport"),
+      joinPath(home, "Library/Developer/Xcode/Archives"),
+      joinPath(home, "Library/Developer/CoreSimulator/Caches"),
       "/opt/homebrew/var/cache",
       "/opt/homebrew/var/homebrew",
       "/usr/local/var/cache",
       "/Library/Caches",
       "/private/var/tmp",
       "/tmp",
-      "/Applications",
   };
-
-  for (const auto& p : allow) {
+  for (const auto& p : junk) {
     if (hasPrefix(path, p) && path != p) return true;
   }
 
@@ -182,9 +208,34 @@ bool isSafeToTrash(const std::string& raw) {
       (path.find("/C/") != std::string::npos || path.find("/T/") != std::string::npos))
     return true;
 
+  // Uninstaller leftovers: one named child, not the parent folder, never Apple IDs.
+  auto allowNamedChild = [&](const std::string& root, bool plistOnly) {
+    if (!hasPrefix(path, root) || path == root) return false;
+    std::string rest = path.substr(root.size() + 1);
+    if (rest.find('/') != std::string::npos) return false;
+    if (rest.rfind("com.apple.", 0) == 0) return false;
+    static const char* generic[] = {"Google", "Apple",   "Microsoft", "Adobe",
+                                    "Shared", "Common",  "Unity",     "Autodesk",
+                                    nullptr};
+    for (int i = 0; generic[i]; ++i)
+      if (rest == generic[i]) return false;
+    if (plistOnly) {
+      auto low = lowerCopy(rest);
+      return low.size() > 6 && low.compare(low.size() - 6, 6, ".plist") == 0;
+    }
+    return !rest.empty();
+  };
+  if (allowNamedChild(joinPath(home, "Library/Application Support"), false)) return true;
+  if (allowNamedChild(joinPath(home, "Library/Preferences"), true)) return true;
+  if (allowNamedChild(joinPath(home, "Library/LaunchAgents"), true)) return true;
+  if (allowNamedChild(joinPath(home, "Library/Containers"), false)) return true;
+
+  // User-selected regular files (Large Files / Duplicates), never directories.
   if (isRegularFile(path) && hasPrefix(path, home)) return true;
 
+  // Third-party .app bundles only — never /System/Applications.
   if (path.size() > 4 && path.compare(path.size() - 4, 4, ".app") == 0) {
+    if (hasPrefix(path, "/System")) return false;
     if (hasPrefix(path, "/Applications") || hasPrefix(path, joinPath(home, "Applications")))
       return true;
   }

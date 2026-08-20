@@ -20,3 +20,27 @@ TEST(Safety, BrowserNames) {
   EXPECT_TRUE(dcmm::isBrowserCacheName("com.apple.Safari"));
   EXPECT_FALSE(dcmm::isBrowserCacheName("com.example.MyApp"));
 }
+
+TEST(Safety, SensitiveKeysBlocked) {
+  EXPECT_TRUE(dcmm::isSensitiveFileName("id_rsa"));
+  EXPECT_TRUE(dcmm::isSensitiveFileName("secret.pem"));
+  EXPECT_FALSE(dcmm::isSafeToTrash(dcmm::joinPath(dcmm::homeDirectory(), "Downloads/id_rsa")));
+}
+
+TEST(Safety, ApplicationSupportParentBlocked) {
+  auto support = dcmm::joinPath(dcmm::homeDirectory(), "Library/Application Support");
+  EXPECT_FALSE(dcmm::isSafeToTrash(support));
+  EXPECT_FALSE(dcmm::isSafeToTrash(dcmm::joinPath(support, "Google")));
+  EXPECT_FALSE(dcmm::isSafeToTrash(dcmm::joinPath(support, "com.apple.Safari")));
+}
+
+TEST(Safety, CacheChildAllowed) {
+  auto cache = dcmm::joinPath(dcmm::joinPath(dcmm::homeDirectory(), "Library/Caches"),
+                              "com.example.Junk");
+  EXPECT_FALSE(dcmm::isProtectedPath(cache));
+  EXPECT_TRUE(dcmm::isSafeToTrash(cache));
+}
+
+TEST(Safety, SshTreeBlocked) {
+  EXPECT_TRUE(dcmm::isProtectedPath(dcmm::joinPath(dcmm::homeDirectory(), ".ssh/id_ed25519")));
+}
