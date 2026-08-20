@@ -4,9 +4,20 @@
 
 #include <array>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
+#include <functional>
 #include <sstream>
+#include <string>
 #include <system_error>
+#include <vector>
+
+#if !defined(_WIN32)
+#include <dirent.h>
+#include <errno.h>
+#include <unistd.h>
+#endif
 
 namespace dcmm {
 namespace fs = std::filesystem;
@@ -32,6 +43,11 @@ std::string runShell(const char* cmd) {
   return out;
 }
 
+bool isolatedHome() {
+  const char* h = std::getenv("DCMM_HOME");
+  return h && *h;
+}
+
 fs::path userTrashDir() {
 #if defined(__APPLE__)
   return joinPath(homeDirectory(), ".Trash");
@@ -42,27 +58,126 @@ fs::path userTrashDir() {
 #endif
 }
 
-bool trashEntrySafe(const fs::path& trash, const fs::path& entry) {
-  std::error_code rec;
-  auto resolved = fs::weakly_canonical(entry, rec);
-  if (rec) return false;
-  std::string rs = resolved.string();
-  std::string ts = trash.string();
-  return rs.rfind(ts, 0) == 0;
+std::string stripSlash(std::string s) {
+  while (s.size() > 1 && (s.back() == '/' || s.back() == '\\')) s.pop_back();
+  return s;
 }
 
-void measureTrash(uint64_t& bytes, uint64_t& items) {
-  bytes = 0;
-  items = 0;
-  auto trash = userTrashDir();
+bool trashEntrySafe(const fs::path& trash, const fs::path& entry) {
   std::error_code ec;
-  if (trash.empty() || !fs::exists(trash, ec)) return;
-  for (auto& e : fs::directory_iterator(trash, fs::directory_options::skip_permission_denied, ec)) {
-    if (!trashEntrySafe(trash, e.path())) continue;
-    auto sc = directorySize(e.path().string());
-    bytes += sc.bytes;
-    items += 1;
+  auto t = fs::weakly_canonical(trash, ec);
+  if (ec || t.empty()) t = trash;
+  auto e = fs::weakly_canonical(entry, ec);
+  if (ec || e.empty()) e = entry;
+  const std::string ts = stripSlash(t.string());
+  const std::string es = stripSlash(e.string());
+  if (es == ts) return false;
+  if (es.size() < ts.size()) return false;
+  if (es.compare(0, ts.size(), ts) != 0) return false;
+  return es.size() == ts.size() || es[ts.size()] == '/' || es[ts.size()] == '\\';
+}
+
+std::vector<fs::path> trashRoots() {
+  std::vector<fs::path> roots;
+  auto add = [&](fs::path p) {
+    std::error_code ec;
+    if (p.empty() || !fs::exists(p, ec)) return;
+    auto c = fs::weakly_canonical(p, ec);
+    if (ec || c.empty()) c = p;
+    for (const auto& r : roots)
+      if (r == c) return;
+    roots.push_back(c);
+  };
+  add(userTrashDir());
+#if defined(__APPLE__)
+  if (!isolatedHome()) {
+    std::error_code ec;
+    const auto uid = std::to_string(getuid());
+    fs::directory_iterator it("/Volumes", fs::directory_options::skip_permission_denied, ec);
+    for (; it != fs::directory_iterator() && !ec; it.increment(ec)) {
+      add(it->path() / ".Trashes" / uid);
+    }
   }
+#endif
+  return roots;
+}
+
+enum class TrashListStatus { Ok, Denied, Missing };
+
+TrashListStatus forEachTrashChild(const fs::path& trash,
+                                  const std::function<void(const fs::path&)>& fn) {
+  std::error_code ec;
+  if (trash.empty() || !fs::exists(trash, ec)) return TrashListStatus::Missing;
+#if defined(_WIN32)
+  fs::directory_iterator it(trash, fs::directory_options::skip_permission_denied, ec);
+  if (ec) return TrashListStatus::Denied;
+  for (; it != fs::directory_iterator() && !ec; it.increment(ec)) fn(it->path());
+  return TrashListStatus::Ok;
+#else
+  DIR* dir = opendir(trash.c_str());
+  if (!dir) {
+    if (errno == EACCES || errno == EPERM) return TrashListStatus::Denied;
+    return TrashListStatus::Missing;
+  }
+  while (dirent* ent = readdir(dir)) {
+    if (std::strcmp(ent->d_name, ".") == 0 || std::strcmp(ent->d_name, "..") == 0) continue;
+    fn(trash / ent->d_name);
+  }
+  closedir(dir);
+  return TrashListStatus::Ok;
+#endif
+}
+
+#if defined(__APPLE__)
+long finderTrashCount() {
+  if (isolatedHome()) return -1;
+  FILE* pipe = popen("osascript -e 'tell application \"Finder\" to count items of trash'", "r");
+  if (!pipe) return -1;
+  char buf[128]{};
+  const char* got = fgets(buf, sizeof(buf), pipe);
+  int st = pclose(pipe);
+  if (!got || st != 0) return -1;
+  char* end = nullptr;
+  long n = std::strtol(buf, &end, 10);
+  if (end == buf) return -1;
+  return n;
+}
+
+bool finderEmptyTrash() {
+  if (isolatedHome()) return false;
+  std::string out = runShell(
+      "osascript -e 'tell application \"Finder\"' -e 'try' -e 'empty the trash' -e "
+      "'return \"ok\"' -e 'on error' -e 'return \"err\"' -e 'end try' -e 'end tell'");
+  return out.find("ok") != std::string::npos;
+}
+#endif
+
+struct TrashMeasure {
+  uint64_t bytes = 0;
+  uint64_t items = 0;
+  bool denied = false;
+  bool usedFinder = false;
+};
+
+TrashMeasure measureTrash() {
+  TrashMeasure m;
+  for (const auto& root : trashRoots()) {
+    auto st = forEachTrashChild(root, [&](const fs::path& p) {
+      if (!trashEntrySafe(root, p)) return;
+      auto sc = directorySize(p.string());
+      m.bytes += sc.bytes;
+      m.items += 1;
+    });
+    if (st == TrashListStatus::Denied) m.denied = true;
+  }
+#if defined(__APPLE__)
+  long n = finderTrashCount();
+  if (n >= 0) {
+    m.usedFinder = true;
+    if (static_cast<uint64_t>(n) > m.items) m.items = static_cast<uint64_t>(n);
+  }
+#endif
+  return m;
 }
 
 std::vector<std::string> quickLookCachePaths() {
@@ -103,12 +218,25 @@ std::vector<MaintenanceTask> Engine::maintenanceTasks() const {
 MaintenanceResult Engine::previewMaintenance(const std::string& id) const {
   MaintenanceResult r;
   if (id == "empty_trash") {
-    measureTrash(r.bytesFreed, r.itemsAffected);
-    r.nothingToDo = r.itemsAffected == 0 && r.bytesFreed == 0;
-    r.message = r.nothingToDo ? "Nothing to clean. Trash is already empty."
+    auto m = measureTrash();
+    r.bytesFreed = m.bytes;
+    r.itemsAffected = m.items;
+    if (m.items > 0 || m.bytes > 0) {
+      r.nothingToDo = false;
+      r.message = m.bytes > 0 ? (std::string("Trash currently holds ") + formatBytes(m.bytes) +
+                                 " in " + formatCount(m.items, "item", "items") + ".")
                               : (std::string("Trash currently holds ") +
-                                 formatBytes(r.bytesFreed) + " in " +
-                                 formatCount(r.itemsAffected, "item", "items") + ".");
+                                 formatCount(m.items, "item", "items") + ".");
+      return r;
+    }
+    if (m.denied && !m.usedFinder) {
+      r.nothingToDo = false;
+      r.message =
+          "macOS is hiding Trash from this app. Empty Trash will ask Finder to empty it.";
+      return r;
+    }
+    r.nothingToDo = true;
+    r.message = "Nothing to clean. Trash is already empty.";
     return r;
   }
   if (id == "quicklook") {
@@ -145,33 +273,43 @@ MaintenanceResult Engine::runMaintenance(const std::string& id) {
     out.nothingToDo = true;
     return out;
 #else
-    auto trash = userTrashDir();
-    std::error_code ec;
     uint64_t ok = 0, fail = 0, bytes = 0;
-    for (auto& e : fs::directory_iterator(trash, fs::directory_options::skip_permission_denied, ec)) {
-      if (!trashEntrySafe(trash, e.path())) {
-        fail++;
-        continue;
-      }
-      auto sc = directorySize(e.path().string());
-      fs::remove_all(e.path(), ec);
-      if (ec)
-        fail++;
-      else {
-        ok++;
-        bytes += sc.bytes;
-      }
+#if defined(__APPLE__)
+    bool finderOk = finderEmptyTrash();
+#else
+    bool finderOk = false;
+#endif
+    for (const auto& root : trashRoots()) {
+      auto st = forEachTrashChild(root, [&](const fs::path& p) {
+        if (!trashEntrySafe(root, p)) {
+          fail++;
+          return;
+        }
+        auto sc = directorySize(p.string());
+        std::error_code rec;
+        fs::remove_all(p, rec);
+        if (rec)
+          fail++;
+        else {
+          ok++;
+          bytes += sc.bytes;
+        }
+      });
+      if (st == TrashListStatus::Denied) fail++;
     }
     out.bytesFreed = bytes;
     out.itemsAffected = ok;
     std::ostringstream ss;
-    if (ok == 0 && fail == 0) {
+    if (finderOk && ok == 0) {
+      ss << "Finder emptied the Trash.";
+    } else if (ok == 0 && fail == 0 && !finderOk) {
       out.nothingToDo = true;
       ss << "Nothing to clean. Trash is already empty.";
     } else {
       ss << "Freed " << formatBytes(bytes) << " from Trash ("
          << formatCount(ok, "item", "items") << ")";
       if (fail) ss << "; " << fail << " skipped";
+      if (finderOk) ss << "; Finder emptied remaining items";
       ss << ".";
     }
     out.message = ss.str();

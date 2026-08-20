@@ -134,7 +134,7 @@ Default artifact: `libdcmm.a` (static). Apple links CoreFoundation; Windows link
 
 | id | What it does |
 |----|----------------|
-| `empty_trash` | Permanently delete user Trash contents (measure first) |
+| `empty_trash` | Permanently delete user Trash. On Apple, list `~/.Trash` and volume `.Trashes/<uid>`; if TCC hides the folder, **do not** report “already empty” — ask Finder (`osascript`) to count/empty. Skip Finder when `DCMM_HOME` is set. Canonicalize trash roots before the safety prefix check. |
 | `flush_dns` | DNS cache only — no files |
 | `launch_services` | User-domain `lsregister` — no files (Apple) |
 | `quicklook` | Move Quick Look caches to Trash (Apple) |

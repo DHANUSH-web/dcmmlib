@@ -95,6 +95,7 @@ if(DCMM_BUILD_TESTS)
     tests/test_duplicates.cpp
     tests/test_c_abi.cpp
     tests/test_disk.cpp
+    tests/test_maintenance.cpp
   )
   target_link_libraries(dcmm-tests PRIVATE dcmm GTest::gtest_main)
   target_include_directories(dcmm-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
