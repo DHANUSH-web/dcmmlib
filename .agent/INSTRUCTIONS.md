@@ -65,6 +65,17 @@ Tests may set `DCMM_HOME` and `DCMM_TRASH` so scans never touch a real home dire
 CMake + **Ninja** + **Clang/LLVM**. C++17.
 
 ```bash
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+./build/release/dcmm-cli disk
+```
+
+Debug: `--preset debug`. Presets live in `CMakePresets.json` (Ninja + Clang). Local overrides belong in `CMakeUserPresets.json` (gitignored).
+
+Equivalent without presets:
+
+```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_C_COMPILER=clang \
   -DCMAKE_CXX_COMPILER=clang++ \

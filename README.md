@@ -16,6 +16,16 @@ Protected locations (system trees, `~/Documents` itself, keychains, `.ssh`, Phot
 ## Build (LLVM + Clang + Ninja)
 
 ```bash
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+```
+
+Debug: `--preset debug`. Artifacts go in `build/release` or `build/debug`.
+
+Equivalent without presets:
+
+```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE=cmake/llvm-clang.cmake \
   -DCMAKE_BUILD_TYPE=Release
@@ -26,8 +36,8 @@ ctest --test-dir build --output-on-failure
 Produces `libdcmm.a` (default) and `dcmm-cli`.
 
 ```bash
-./build/dcmm-cli disk
-./build/dcmm-cli junk
+./build/release/dcmm-cli disk
+./build/release/dcmm-cli junk
 ```
 
 Shared library: `-DDCMM_BUILD_SHARED=ON`.
