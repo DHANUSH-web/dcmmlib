@@ -42,7 +42,8 @@ class Engine {
   MemoryStats memory() const;
 
   std::vector<MaintenanceTask> maintenanceTasks() const;
-  std::string runMaintenance(const std::string& id);
+  MaintenanceResult previewMaintenance(const std::string& id) const;
+  MaintenanceResult runMaintenance(const std::string& id);
 
  private:
   ScanReport scanCatalog(const std::vector<CatalogEntry>& entries, const ProgressFn& progress);

@@ -13,7 +13,7 @@ struct ScanItem {
   std::string detail;
   uint64_t bytes = 0;
   uint64_t fileCount = 0;
-  bool selected = true;
+  bool selected = false;
   bool reviewFirst = false;
 };
 
@@ -118,6 +118,13 @@ struct MaintenanceTask {
   std::string title;
   std::string detail;
   std::string note;
+};
+
+struct MaintenanceResult {
+  bool nothingToDo = false;
+  uint64_t bytesFreed = 0;
+  uint64_t itemsAffected = 0;
+  std::string message;
 };
 
 struct CatalogEntry {
