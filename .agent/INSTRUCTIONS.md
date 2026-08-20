@@ -15,7 +15,7 @@ Workspace on the original machine is often:
 ```
 DeepCleanMyMac/          # parent folder, not necessarily a git repo
   dcmmlib/               # this repo (own git)
-  dcmm-desktop/          # mac app (own git, submodule of this repo at dcmm-desktop/dcmmlib)
+  dcmm-desktop/          # mac app (own git, submodule of this repo at extras/dcmmlib)
 ```
 
 ## Product intent
@@ -151,7 +151,7 @@ GoogleTest via FetchContent (v1.15.2). Add tests when changing safety, hashing, 
 
 - Put new public types in `types.hpp` and new engine methods on `Engine`.
 - Keep catalogs conservative; prefer a missed junk folder over deleting user data.
-- If `dcmm-desktop` uses a **submodule copy**, copy or commit+update the submodule after engine changes or the app will build stale sources.
+- If `dcmm-desktop` uses a **submodule copy** at `extras/dcmmlib`, copy or commit+update that submodule after engine changes or the app will build stale sources.
 
 ## Out of scope
 
