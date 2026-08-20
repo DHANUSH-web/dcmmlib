@@ -21,6 +21,7 @@ ScanReport Engine::scanCatalog(const std::vector<CatalogEntry>& entries, const P
     auto g = scanCatalogEntry(e, &cancel_, progress);
     if (!g.items.empty()) report.groups.push_back(std::move(g));
   }
+  report.sortBySizeDescending();
   auto t1 = std::chrono::steady_clock::now();
   report.elapsedMs =
       static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());

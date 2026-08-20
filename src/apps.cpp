@@ -163,8 +163,10 @@ std::vector<InstalledApp> Engine::listApps(const ProgressFn& progress) {
       if (progress) progress(full, apps.size(), 0);
     });
   }
-  std::sort(apps.begin(), apps.end(),
-            [](const InstalledApp& x, const InstalledApp& y) { return x.name < y.name; });
+  std::sort(apps.begin(), apps.end(), [](const InstalledApp& x, const InstalledApp& y) {
+    if (x.appBytes != y.appBytes) return x.appBytes > y.appBytes;
+    return x.name < y.name;
+  });
   return apps;
 }
 
@@ -189,8 +191,10 @@ void Engine::attachLeftovers(InstalledApp& app) {
   if (!app.bundleId.empty()) support(app.bundleId);
   if (!app.name.empty() && app.name != app.bundleId) support(app.name);
   consider(app.appPath);
-  std::sort(app.leftovers.begin(), app.leftovers.end(),
-            [](const ScanItem& a, const ScanItem& b) { return a.bytes > b.bytes; });
+  std::sort(app.leftovers.begin(), app.leftovers.end(), [](const ScanItem& a, const ScanItem& b) {
+    if (a.bytes != b.bytes) return a.bytes > b.bytes;
+    return a.displayName < b.displayName;
+  });
 }
 
 }  // namespace dcmm

@@ -26,6 +26,25 @@ class CatalogEnv : public ::testing::Test {
   }
 };
 
+TEST_F(CatalogEnv, JunkItemsSortedLargestFirst) {
+  fs::create_directories(home / "Library" / "Caches" / "tiny");
+  std::ofstream((home / "Library" / "Caches" / "tiny" / "t.bin").string(), std::ios::binary)
+      << std::string(64, 't');
+  fs::create_directories(home / "Library" / "Caches" / "huge");
+  std::ofstream((home / "Library" / "Caches" / "huge" / "h.bin").string(), std::ios::binary)
+      << std::string(4096, 'h');
+  dcmm::Engine e;
+  auto r = e.scanJunk();
+  const dcmm::ScanGroup* caches = nullptr;
+  for (const auto& g : r.groups)
+    if (g.id == "user_caches") caches = &g;
+  ASSERT_NE(caches, nullptr);
+  ASSERT_GE(caches->items.size(), 2u);
+  for (std::size_t i = 1; i < caches->items.size(); ++i)
+    EXPECT_GE(caches->items[i - 1].bytes, caches->items[i].bytes);
+  EXPECT_EQ(caches->items.front().displayName, "huge");
+}
+
 TEST_F(CatalogEnv, JunkFindsCache) {
   dcmm::Engine e;
   auto r = e.scanJunk();

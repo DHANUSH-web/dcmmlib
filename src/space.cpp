@@ -41,8 +41,10 @@ std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
   }
 #endif
 
-  std::sort(nodes.begin(), nodes.end(),
-            [](const SpaceNode& a, const SpaceNode& b) { return a.bytes > b.bytes; });
+  std::sort(nodes.begin(), nodes.end(), [](const SpaceNode& a, const SpaceNode& b) {
+    if (a.bytes != b.bytes) return a.bytes > b.bytes;
+    return a.name < b.name;
+  });
   if (nodes.size() > 40) nodes.resize(40);
   return nodes;
 }

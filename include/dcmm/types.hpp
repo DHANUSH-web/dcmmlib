@@ -28,6 +28,7 @@ struct ScanGroup {
   uint64_t selectedBytes() const;
   uint64_t selectedFiles() const;
   std::size_t selectedCount() const;
+  void sortBySizeDescending();
 };
 
 struct ScanReport {
@@ -38,6 +39,7 @@ struct ScanReport {
   uint64_t totalBytes() const;
   uint64_t selectedBytes() const;
   std::vector<std::string> selectedPaths() const;
+  void sortBySizeDescending();
 };
 
 using ProgressFn = std::function<void(const std::string& path, uint64_t visited, uint64_t bytesAcc)>;
