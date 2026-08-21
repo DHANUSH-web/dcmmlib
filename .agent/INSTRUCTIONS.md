@@ -169,6 +169,8 @@ Examples: `FEAT: Split Smart Scan groups from System Junk.` / `FIX: Do not doubl
 
 Do not use Conventional Commits (`feat:` lowercase, scopes, types like `chore`). Split mixed work into a FEAT commit and a FIX commit. Subject after the colon is imperative, like the rest of this repo.
 
+Public contribution docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`. PRs target **`dev`**.
+
 ## How to change this library
 
 - Put new public types in `types.hpp` and new engine methods on `Engine`.
