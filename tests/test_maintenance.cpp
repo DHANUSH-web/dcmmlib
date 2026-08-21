@@ -31,6 +31,15 @@ TEST_F(TrashEnv, EmptyPreviewWhenTrashIsEmpty) {
   dcmm::Engine e;
   auto p = e.previewMaintenance("empty_trash");
   EXPECT_TRUE(p.nothingToDo);
+  EXPECT_NE(p.message.find("Nothing to clean"), std::string::npos);
+}
+
+TEST_F(TrashEnv, PreviewIgnoresFinderMetadataInTrash) {
+  std::ofstream(home / ".Trash" / ".DS_Store") << "meta";
+  std::ofstream(home / ".Trash" / ".localized") << "";
+  dcmm::Engine e;
+  auto p = e.previewMaintenance("empty_trash");
+  EXPECT_TRUE(p.nothingToDo);
 }
 
 TEST_F(TrashEnv, PreviewSeesFilesInHomeTrash) {

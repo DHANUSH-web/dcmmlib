@@ -63,6 +63,11 @@ std::string stripSlash(std::string s) {
   return s;
 }
 
+bool isTrashMetadataName(const std::string& name) {
+  return name == ".DS_Store" || name == ".localized" || name == ".hidden" ||
+         (name.size() >= 2 && name[0] == '.' && name[1] == '_');
+}
+
 bool trashEntrySafe(const fs::path& trash, const fs::path& entry) {
   std::error_code ec;
   auto t = fs::weakly_canonical(trash, ec);
@@ -131,15 +136,16 @@ TrashListStatus forEachTrashChild(const fs::path& trash,
 #if defined(__APPLE__)
 long finderTrashCount() {
   if (isolatedHome()) return -1;
-  FILE* pipe = popen("osascript -e 'tell application \"Finder\" to count items of trash'", "r");
+  FILE* pipe =
+      popen("/usr/bin/osascript -e 'tell application \"Finder\" to count items of trash'", "r");
   if (!pipe) return -1;
   char buf[128]{};
   const char* got = fgets(buf, sizeof(buf), pipe);
-  int st = pclose(pipe);
-  if (!got || st != 0) return -1;
+  pclose(pipe);
+  if (!got) return -1;
   char* end = nullptr;
   long n = std::strtol(buf, &end, 10);
-  if (end == buf) return -1;
+  if (end == buf || n < 0) return -1;
   return n;
 }
 
@@ -164,6 +170,7 @@ TrashMeasure measureTrash() {
   for (const auto& root : trashRoots()) {
     auto st = forEachTrashChild(root, [&](const fs::path& p) {
       if (!trashEntrySafe(root, p)) return;
+      if (isTrashMetadataName(p.filename().string())) return;
       auto sc = directorySize(p.string());
       m.bytes += sc.bytes;
       m.items += 1;
@@ -174,7 +181,12 @@ TrashMeasure measureTrash() {
   long n = finderTrashCount();
   if (n >= 0) {
     m.usedFinder = true;
-    if (static_cast<uint64_t>(n) > m.items) m.items = static_cast<uint64_t>(n);
+    if (n == 0) {
+      m.items = 0;
+      m.bytes = 0;
+    } else if (static_cast<uint64_t>(n) > m.items) {
+      m.items = static_cast<uint64_t>(n);
+    }
   }
 #endif
   return m;
@@ -227,12 +239,6 @@ MaintenanceResult Engine::previewMaintenance(const std::string& id) const {
                                  " in " + formatCount(m.items, "item", "items") + ".")
                               : (std::string("Trash currently holds ") +
                                  formatCount(m.items, "item", "items") + ".");
-      return r;
-    }
-    if (m.denied && !m.usedFinder) {
-      r.nothingToDo = false;
-      r.message =
-          "macOS is hiding Trash from this app. Empty Trash will ask Finder to empty it.";
       return r;
     }
     r.nothingToDo = true;
