@@ -9,10 +9,9 @@ namespace dcmm {
 std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
   std::vector<SpaceNode> nodes;
   const std::string home = homeDirectory();
-  forEachChild(home, [&](const std::string& name, const std::string& full, bool isDir) {
+  auto add = [&](const std::string& name, const std::string& full, bool isDir) {
     if (cancel_.load()) return;
-    if (name == ".Trash" || name == ".local") return;
-    auto sc = directorySize(full, &cancel_, progress);
+    auto sc = directoryAllocatedSize(full, &cancel_, progress);
     if (sc.bytes == 0) return;
     SpaceNode n;
     n.path = full;
@@ -20,26 +19,20 @@ std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
     n.bytes = sc.bytes;
     n.isDir = isDir;
     nodes.push_back(std::move(n));
-  });
+  };
 
-#if defined(__APPLE__)
-  const std::string lib = joinPath(home, "Library");
-  static const char* heavy[] = {"Caches", "Application Support", "Containers", "Group Containers",
-                                "Developer", "Logs", nullptr};
-  for (int i = 0; heavy[i]; ++i) {
-    if (cancel_.load()) break;
-    auto p = joinPath(lib, heavy[i]);
-    if (!pathExists(p)) continue;
-    auto sc = directorySize(p, &cancel_, progress);
-    if (!sc.bytes) continue;
-    SpaceNode n;
-    n.path = p;
-    n.name = std::string("Library/") + heavy[i];
-    n.bytes = sc.bytes;
-    n.isDir = true;
-    nodes.push_back(std::move(n));
-  }
-#endif
+  forEachChild(home, [&](const std::string& name, const std::string& full, bool isDir) {
+    if (name == ".Trash" || name == ".local") return;
+    // List Library children instead of Library as one blob so we do not
+    // show Library and Library/Containers as overlapping 400+ GB rows.
+    if (name == "Library" && isDir) {
+      forEachChild(full, [&](const std::string& child, const std::string& childPath, bool childDir) {
+        add(std::string("Library/") + child, childPath, childDir);
+      });
+      return;
+    }
+    add(name, full, isDir);
+  });
 
   std::sort(nodes.begin(), nodes.end(), [](const SpaceNode& a, const SpaceNode& b) {
     if (a.bytes != b.bytes) return a.bytes > b.bytes;

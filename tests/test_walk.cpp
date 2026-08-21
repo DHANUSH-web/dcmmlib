@@ -26,3 +26,18 @@ TEST(Walk, SkipGitName) {
   EXPECT_TRUE(dcmm::skipDirectoryName(".git"));
   EXPECT_FALSE(dcmm::skipDirectoryName("src"));
 }
+
+TEST(Walk, AllocatedSizeDoesNotExceedPaddedLogical) {
+  auto root = fs::temp_directory_path() / "dcmm-walk-alloc";
+  fs::remove_all(root);
+  fs::create_directories(root);
+  {
+    std::ofstream((root / "a.bin").string()) << std::string(100, 'x');
+  }
+  auto logical = dcmm::directorySize(root.string());
+  auto alloc = dcmm::directoryAllocatedSize(root.string());
+  EXPECT_EQ(logical.files, 1u);
+  EXPECT_GE(alloc.bytes, logical.bytes);
+  EXPECT_LE(alloc.bytes, 16u * 1024u);
+  fs::remove_all(root);
+}

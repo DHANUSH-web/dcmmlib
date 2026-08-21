@@ -60,6 +60,8 @@ Tests may set `DCMM_HOME` and `DCMM_TRASH` so scans never touch a real home dire
 
 `dcmm::Engine` methods: `scanSmart`, `scanJunk`, `scanPrivacy`, `trashPaths`, `findLargeFiles`, `findDuplicates`, `spaceLens`, `listApps`, `attachLeftovers`, `disk`, `memory`, `maintenanceTasks`, `previewMaintenance`, `runMaintenance`.
 
+`spaceLens` lists home children and **Library subfolders as separate rows** (never `Library` plus `Library/Containers`). Sizes are **allocated disk bytes** (`st_blocks`), not logical `file_size`, so iCloud placeholders and sparse files do not look like hundreds of GB.
+
 ## Build (required toolchain)
 
 CMake + **Ninja** + **Clang/LLVM**. C++17.
