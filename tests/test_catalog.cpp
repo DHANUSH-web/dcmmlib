@@ -9,12 +9,40 @@
 
 namespace fs = std::filesystem;
 
+fs::path userCacheRoot(const fs::path& home) {
+#if defined(__APPLE__)
+  return home / "Library" / "Caches";
+#else
+  return home / ".cache";
+#endif
+}
+
+const char* userCacheGroupId() {
+#if defined(__APPLE__)
+  return "user_caches";
+#else
+  return "user_cache";
+#endif
+}
+
+const char* userCacheGroupTitle() {
+#if defined(__APPLE__)
+  return "User Caches";
+#else
+  return "User Cache";
+#endif
+}
+
 class CatalogEnv : public ::testing::Test {
  protected:
   fs::path home;
   void SetUp() override {
     home = fs::temp_directory_path() / "dcmm-catalog-home";
     fs::remove_all(home);
+    auto caches = userCacheRoot(home);
+    fs::create_directories(caches / "com.example.Junk");
+    std::ofstream((caches / "com.example.Junk" / "c.bin").string()) << std::string(2048, 'j');
+    // Category-root trash test uses Library/Caches on every OS.
     fs::create_directories(home / "Library" / "Caches" / "com.example.Junk");
     std::ofstream((home / "Library" / "Caches" / "com.example.Junk" / "c.bin").string())
         << std::string(2048, 'j');
@@ -27,17 +55,16 @@ class CatalogEnv : public ::testing::Test {
 };
 
 TEST_F(CatalogEnv, JunkItemsSortedLargestFirst) {
-  fs::create_directories(home / "Library" / "Caches" / "tiny");
-  std::ofstream((home / "Library" / "Caches" / "tiny" / "t.bin").string(), std::ios::binary)
-      << std::string(64, 't');
-  fs::create_directories(home / "Library" / "Caches" / "huge");
-  std::ofstream((home / "Library" / "Caches" / "huge" / "h.bin").string(), std::ios::binary)
-      << std::string(4096, 'h');
+  auto cachesDir = userCacheRoot(home);
+  fs::create_directories(cachesDir / "tiny");
+  std::ofstream((cachesDir / "tiny" / "t.bin").string(), std::ios::binary) << std::string(64, 't');
+  fs::create_directories(cachesDir / "huge");
+  std::ofstream((cachesDir / "huge" / "h.bin").string(), std::ios::binary) << std::string(4096, 'h');
   dcmm::Engine e;
   auto r = e.scanJunk();
   const dcmm::ScanGroup* caches = nullptr;
   for (const auto& g : r.groups)
-    if (g.id == "user_caches") caches = &g;
+    if (g.id == userCacheGroupId()) caches = &g;
   ASSERT_NE(caches, nullptr);
   ASSERT_GE(caches->items.size(), 2u);
   for (std::size_t i = 1; i < caches->items.size(); ++i)
@@ -67,9 +94,9 @@ TEST_F(CatalogEnv, SmartRecommendsCachesAsOneGroup) {
   for (const auto& g : r.groups) {
     EXPECT_EQ(g.items.size(), 1u);
     EXPECT_TRUE(g.items[0].selected);
-    if (g.id == "user_caches") {
+    if (g.id == userCacheGroupId()) {
       foundCaches = true;
-      EXPECT_EQ(g.items[0].displayName, "User Caches");
+      EXPECT_EQ(g.items[0].displayName, userCacheGroupTitle());
     }
     for (const auto& it : g.items) {
       if (it.displayName == "com.example.Junk") foundChildName = true;
