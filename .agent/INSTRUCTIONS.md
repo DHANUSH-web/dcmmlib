@@ -149,6 +149,15 @@ Use `#if defined(_WIN32)` / `__APPLE__` / else Linux. Keep Windows Recycle Bin a
 
 GoogleTest via FetchContent (v1.15.2). Add tests when changing safety, hashing, format, or catalogs. Existing coverage includes safety (root, Documents, SSH, Application Support, cache children, sensitive names), SHA-256 vectors, C ABI, duplicates, disk.
 
+## Branches
+
+- **`dev`** — default development branch. Make all new commits here.
+- **`main`** — functional stable line. Do not land new work on `main` unless the user explicitly asks.
+
+Check `git branch` at the start of a session. If you are on `main`, switch to `dev` before editing.
+
+The macOS app (`dcmm-desktop`) develops on **`beta`**. After engine changes, update `dcmm-desktop/extras/dcmmlib` to this `dev` commit.
+
 ## Commits
 
 Every commit subject must be `KIND: message` with **KIND in uppercase**:
