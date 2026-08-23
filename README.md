@@ -1,6 +1,9 @@
 # dcmmlib
 
-GUI-free C++ engine for **DeepCleanMyMac** and any other front end. Scan junk, find large and duplicate files, list leftover app files, and move selected paths to the platform trash. Native binaries, LLVM/Clang, CMake + Ninja.
+[![CI](https://github.com/DHANUSH-web/dcmmlib/actions/workflows/ci.yml/badge.svg)](https://github.com/DHANUSH-web/dcmmlib/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+GUI-free C++ engine for **[DeepCleanMyMac](https://github.com/DHANUSH-web/DeepCleanMyMac)** and any other front end. Scan junk, find large and duplicate files, list leftover app files, and move selected paths to the platform trash. Native binaries, LLVM/Clang, CMake + Ninja.
 
 The library has **no GUI code**. Desktop, CLI, or another toolkit (Qt, wx, WinUI, GTK) talks to it through the C++ API or the C ABI.
 
@@ -53,3 +56,11 @@ Shared library: `-DDCMM_BUILD_SHARED=ON`.
 | `cli/` | Optional smoke tool |
 
 Platform backends live behind `#if` in the engine (`macOS`, `Linux`, `Windows`). Trash uses `~/.Trash` / Freedesktop Trash / Recycle Bin (`FOF_ALLOWUNDO`).
+
+## Contributing
+
+Development happens on **`dev`**. `main` is stable. See [CONTRIBUTING.md](CONTRIBUTING.md). Please follow the [code of conduct](CODE_OF_CONDUCT.md). Security issues: [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE).

@@ -1,0 +1,26 @@
+name: Feature request
+description: A new engine API, catalog, or platform backend.
+title: "[Feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is missing or painful today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Keep this GUI-free. New behavior should live on dcmm::Engine or the C ABI.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: This does not trash protected paths or skip isSafeToTrash.
+          required: true

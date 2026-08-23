@@ -9,14 +9,24 @@
 
 namespace fs = std::filesystem;
 
+fs::path userTrashFiles(const fs::path& home) {
+#if defined(__APPLE__)
+  return home / ".Trash";
+#else
+  return home / ".local" / "share" / "Trash" / "files";
+#endif
+}
+
 class TrashEnv : public ::testing::Test {
  protected:
   fs::path home;
+  fs::path trash;
   void SetUp() override {
     auto base = fs::weakly_canonical(fs::temp_directory_path());
     home = base / ("dcmm-trash-" + std::to_string(reinterpret_cast<uintptr_t>(this)));
     fs::remove_all(home);
-    fs::create_directories(home / ".Trash");
+    trash = userTrashFiles(home);
+    fs::create_directories(trash);
     fs::create_directories(home / "Documents");
     setenv("DCMM_HOME", home.string().c_str(), 1);
   }
@@ -31,10 +41,19 @@ TEST_F(TrashEnv, EmptyPreviewWhenTrashIsEmpty) {
   dcmm::Engine e;
   auto p = e.previewMaintenance("empty_trash");
   EXPECT_TRUE(p.nothingToDo);
+  EXPECT_NE(p.message.find("Nothing to clean"), std::string::npos);
+}
+
+TEST_F(TrashEnv, PreviewIgnoresFinderMetadataInTrash) {
+  std::ofstream(trash / ".DS_Store") << "meta";
+  std::ofstream(trash / ".localized") << "";
+  dcmm::Engine e;
+  auto p = e.previewMaintenance("empty_trash");
+  EXPECT_TRUE(p.nothingToDo);
 }
 
 TEST_F(TrashEnv, PreviewSeesFilesInHomeTrash) {
-  std::ofstream(home / ".Trash" / "a.txt") << "hello trash";
+  std::ofstream(trash / "a.txt") << "hello trash";
   dcmm::Engine e;
   auto p = e.previewMaintenance("empty_trash");
   EXPECT_FALSE(p.nothingToDo);
@@ -42,11 +61,11 @@ TEST_F(TrashEnv, PreviewSeesFilesInHomeTrash) {
 }
 
 TEST_F(TrashEnv, EmptyRemovesTrashNotDocuments) {
-  std::ofstream(home / ".Trash" / "gone.txt") << "x";
+  std::ofstream(trash / "gone.txt") << "x";
   std::ofstream(home / "Documents" / "keep.txt") << "y";
   dcmm::Engine e;
   auto r = e.runMaintenance("empty_trash");
   EXPECT_FALSE(r.nothingToDo);
-  EXPECT_FALSE(fs::exists(home / ".Trash" / "gone.txt"));
+  EXPECT_FALSE(fs::exists(trash / "gone.txt"));
   EXPECT_TRUE(fs::exists(home / "Documents" / "keep.txt"));
 }

@@ -149,6 +149,15 @@ Use `#if defined(_WIN32)` / `__APPLE__` / else Linux. Keep Windows Recycle Bin a
 
 GoogleTest via FetchContent (v1.15.2). Add tests when changing safety, hashing, format, or catalogs. Existing coverage includes safety (root, Documents, SSH, Application Support, cache children, sensitive names), SHA-256 vectors, C ABI, duplicates, disk.
 
+## Branches
+
+- **`dev`** — default development branch. Make all new commits here.
+- **`main`** — functional stable line. Do not land new work on `main` unless the user explicitly asks.
+
+Check `git branch` at the start of a session. If you are on `main`, switch to `dev` before editing.
+
+The macOS app (`dcmm-desktop`) develops on **`beta`**. After engine changes, update `dcmm-desktop/extras/dcmmlib` to this `dev` commit.
+
 ## Commits
 
 Every commit subject must be `KIND: message` with **KIND in uppercase**:
@@ -159,6 +168,8 @@ Every commit subject must be `KIND: message` with **KIND in uppercase**:
 Examples: `FEAT: Split Smart Scan groups from System Junk.` / `FIX: Do not double-count Homebrew cache.`
 
 Do not use Conventional Commits (`feat:` lowercase, scopes, types like `chore`). Split mixed work into a FEAT commit and a FIX commit. Subject after the colon is imperative, like the rest of this repo.
+
+Public contribution docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`. PRs target **`dev`**.
 
 ## How to change this library
 
