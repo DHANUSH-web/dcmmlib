@@ -1,4 +1,5 @@
 #include "dcmm/path.hpp"
+#include "env.hpp"
 
 #include <gtest/gtest.h>
 

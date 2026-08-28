@@ -29,6 +29,16 @@ std::string darwinDir(int name) {
 }
 #endif
 
+#if defined(_WIN32)
+std::string windowsLocalAppData() {
+  // DCMM_HOME isolates tests from the real profile, including LocalAppData.
+  if (const char* o = std::getenv("DCMM_HOME"); o && *o)
+    return joinPath(o, "AppData/Local");
+  if (const char* local = std::getenv("LOCALAPPDATA"); local && *local) return local;
+  return {};
+}
+#endif
+
 }  // namespace
 
 std::vector<CatalogEntry> smartCatalog() {
@@ -44,9 +54,11 @@ std::vector<CatalogEntry> smartCatalog() {
                     "Window positions and crash restoration data",
                     joinPath(home, "Library/Saved Application State"), false, false, false});
 #elif defined(_WIN32)
-  if (const char* local = std::getenv("LOCALAPPDATA")) {
-    addIfExists(out, {"temp", "User Temp", "Temporary files in your profile",
-                      joinPath(local, "Temp"), false, false, false});
+  {
+    const std::string local = windowsLocalAppData();
+    if (!local.empty())
+      addIfExists(out, {"temp", "User Temp", "Temporary files in your profile",
+                        joinPath(local, "Temp"), false, false, false});
   }
 #else
   addIfExists(out, {"user_cache", "User Cache", "XDG cache directory", joinPath(home, ".cache"),
@@ -94,11 +106,14 @@ std::vector<CatalogEntry> junkCatalog() {
   addIfExists(out, {"trash", "Trash", "Items already in the Trash", joinPath(home, ".Trash"), true,
                     false, false});
 #elif defined(_WIN32)
-  if (const char* local = std::getenv("LOCALAPPDATA")) {
-    addIfExists(out, {"temp", "User Temp", "Temporary files", joinPath(local, "Temp"), true, false,
-                      false});
-    addIfExists(out, {"pip", "pip Cache", "Python wheels", joinPath(local, "pip/Cache"), true, false,
-                      false});
+  {
+    const std::string local = windowsLocalAppData();
+    if (!local.empty()) {
+      addIfExists(out, {"temp", "User Temp", "Temporary files", joinPath(local, "Temp"), true, false,
+                        false});
+      addIfExists(out, {"pip", "pip Cache", "Python wheels", joinPath(local, "pip/Cache"), true,
+                        false, false});
+    }
   }
 #else
   addIfExists(out, {"user_cache", "User Cache", "XDG cache directory", joinPath(home, ".cache"),

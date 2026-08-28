@@ -78,7 +78,7 @@ void readBinaryPlist(const std::string& path, InstalledApp& app) {
 }
 #endif
 
-void parseInfoPlist(const std::string& plistPath, InstalledApp& app) {
+[[maybe_unused]] void parseInfoPlist(const std::string& plistPath, InstalledApp& app) {
   auto body = readFile(plistPath);
   if (body.size() >= 8 && body.compare(0, 8, "bplist00") == 0) {
 #if defined(__APPLE__)

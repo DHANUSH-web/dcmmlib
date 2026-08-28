@@ -20,10 +20,32 @@ std::string norm(const std::string& p) {
   return r;
 }
 
+char pathSepNorm(char c) {
+  return (c == '/' || c == '\\') ? '\\' : c;
+}
+
 bool hasPrefix(const std::string& path, const std::string& prefix) {
   if (prefix.empty() || path.size() < prefix.size()) return false;
+#if defined(_WIN32)
+  for (std::size_t i = 0; i < prefix.size(); ++i) {
+    unsigned char a = static_cast<unsigned char>(pathSepNorm(path[i]));
+    unsigned char b = static_cast<unsigned char>(pathSepNorm(prefix[i]));
+    if (std::tolower(a) != std::tolower(b)) return false;
+  }
+#else
   if (path.compare(0, prefix.size(), prefix) != 0) return false;
+#endif
   return path.size() == prefix.size() || path[prefix.size()] == '/' || path[prefix.size()] == '\\';
+}
+
+bool isVolumeRoot(const std::string& path) {
+  if (path.empty() || path == "/" || path == "\\") return true;
+#if defined(_WIN32)
+  // weakly_canonical("/") is "C:\" then trailing slash stripped -> "C:"
+  if (path.size() == 2 && std::isalpha(static_cast<unsigned char>(path[0])) && path[1] == ':')
+    return true;
+#endif
+  return false;
 }
 
 std::string lowerCopy(std::string s) {
@@ -83,8 +105,8 @@ bool isBrowserCacheName(const std::string& name) {
 
 bool isProtectedPath(const std::string& raw) {
   const std::string path = norm(raw);
-  const std::string home = homeDirectory();
-  if (path.empty() || path == "/" || path == home) return true;
+  const std::string home = norm(homeDirectory());
+  if (path.empty() || isVolumeRoot(path) || path == home) return true;
 
 #if defined(_WIN32)
   if (path == "C:\\Windows" || path == "C:\\Program Files" || path == "C:\\Program Files (x86)")
@@ -226,11 +248,12 @@ bool isSafeToTrash(const std::string& raw) {
   if (isSensitiveFileName(lastComponent(path))) return false;
   if (pathExists(path) && !isOwnedByCurrentUser(path)) return false;
 
-  const std::string home = homeDirectory();
+  const std::string home = norm(homeDirectory());
 
   // Regenerable junk only — never the category folder itself (children only).
   for (const auto& p : junkCategoryRoots()) {
-    if (hasPrefix(path, p) && path != p) return true;
+    const std::string root = norm(p);
+    if (hasPrefix(path, root) && path.size() != root.size()) return true;
   }
 
   if (path.find("/var/folders/") != std::string::npos &&
@@ -239,7 +262,7 @@ bool isSafeToTrash(const std::string& raw) {
 
   // Uninstaller leftovers: one named child, not the parent folder, never Apple IDs.
   auto allowNamedChild = [&](const std::string& root, bool plistOnly) {
-    if (!hasPrefix(path, root) || path == root) return false;
+    if (!hasPrefix(path, root) || path.size() == root.size()) return false;
     std::string rest = path.substr(root.size() + 1);
     if (rest.find('/') != std::string::npos) return false;
     if (rest.rfind("com.apple.", 0) == 0) return false;
