@@ -43,7 +43,7 @@ std::string runShell(const char* cmd) {
   return out;
 }
 
-bool isolatedHome() {
+[[maybe_unused]] bool isolatedHome() {
   const char* h = std::getenv("DCMM_HOME");
   return h && *h;
 }

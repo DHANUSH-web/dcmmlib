@@ -1,5 +1,6 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
+#include "env.hpp"
 
 #include <gtest/gtest.h>
 
@@ -12,6 +13,8 @@ namespace fs = std::filesystem;
 fs::path userCacheRoot(const fs::path& home) {
 #if defined(__APPLE__)
   return home / "Library" / "Caches";
+#elif defined(_WIN32)
+  return home / "AppData" / "Local" / "Temp";
 #else
   return home / ".cache";
 #endif
@@ -20,6 +23,8 @@ fs::path userCacheRoot(const fs::path& home) {
 const char* userCacheGroupId() {
 #if defined(__APPLE__)
   return "user_caches";
+#elif defined(_WIN32)
+  return "temp";
 #else
   return "user_cache";
 #endif
@@ -28,6 +33,8 @@ const char* userCacheGroupId() {
 const char* userCacheGroupTitle() {
 #if defined(__APPLE__)
   return "User Caches";
+#elif defined(_WIN32)
+  return "User Temp";
 #else
   return "User Cache";
 #endif

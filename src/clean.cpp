@@ -97,7 +97,8 @@ CleanResult Engine::trashPaths(const std::vector<std::string>& paths) {
       std::string err;
       bool ok = false;
 #if defined(_WIN32)
-      ok = moveToTrashWin(t, err);
+      // DCMM_TRASH (tests) uses a folder; production uses Recycle Bin.
+      ok = trashDir().empty() ? moveToTrashWin(t, err) : moveToTrashPosix(t, err);
 #else
       ok = moveToTrashPosix(t, err);
 #endif

@@ -21,6 +21,11 @@ endif()
 
 add_compile_options(-Wall -Wextra -Wno-unused-parameter)
 
+if(WIN32)
+  # getenv/fopen are the portable APIs; MSVC CRT marks them deprecated.
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
 set(DCMM_SOURCES
   src/types.cpp
   src/path.cpp
@@ -98,7 +103,9 @@ if(DCMM_BUILD_TESTS)
     tests/test_maintenance.cpp
   )
   target_link_libraries(dcmm-tests PRIVATE dcmm GTest::gtest_main)
-  target_include_directories(dcmm-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  target_include_directories(dcmm-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests)
   include(GoogleTest)
   gtest_discover_tests(dcmm-tests)
 endif()

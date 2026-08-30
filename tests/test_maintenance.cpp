@@ -1,5 +1,6 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
+#include "env.hpp"
 
 #include <gtest/gtest.h>
 
@@ -12,6 +13,8 @@ namespace fs = std::filesystem;
 fs::path userTrashFiles(const fs::path& home) {
 #if defined(__APPLE__)
   return home / ".Trash";
+#elif defined(_WIN32)
+  return home / "AppData" / "Local" / "Temp" / "dcmm-trash";
 #else
   return home / ".local" / "share" / "Trash" / "files";
 #endif
@@ -53,6 +56,9 @@ TEST_F(TrashEnv, PreviewIgnoresFinderMetadataInTrash) {
 }
 
 TEST_F(TrashEnv, PreviewSeesFilesInHomeTrash) {
+#if defined(_WIN32)
+  GTEST_SKIP() << "empty_trash does not list Recycle Bin contents on Windows";
+#endif
   std::ofstream(trash / "a.txt") << "hello trash";
   dcmm::Engine e;
   auto p = e.previewMaintenance("empty_trash");
@@ -61,6 +67,9 @@ TEST_F(TrashEnv, PreviewSeesFilesInHomeTrash) {
 }
 
 TEST_F(TrashEnv, EmptyRemovesTrashNotDocuments) {
+#if defined(_WIN32)
+  GTEST_SKIP() << "empty_trash is Recycle Bin UI on Windows";
+#endif
   std::ofstream(trash / "gone.txt") << "x";
   std::ofstream(home / "Documents" / "keep.txt") << "y";
   dcmm::Engine e;
