@@ -169,6 +169,36 @@ std::vector<CatalogEntry> privacyCatalog() {
   return out;
 }
 
+ScanGroup scanInstallerLeftovers(std::atomic<bool>* cancel, const ProgressFn& progress) {
+  ScanGroup g;
+  g.id = "installers";
+  g.title = "Installer leftovers";
+  g.subtitle = "Disk images and packages left in Downloads and Documents";
+  const std::string home = homeDirectory();
+  const std::string roots[] = {joinPath(home, "Downloads"), joinPath(home, "Documents")};
+  for (const auto& root : roots) {
+    if (!isDirectory(root)) continue;
+    forEachChild(root, [&](const std::string& name, const std::string& full, bool) {
+      if (cancel && cancel->load()) return;
+      if (!isInstallerFileName(name)) return;
+      if (pathExists(full) && !isOwnedByCurrentUser(full)) return;
+      if (!isSafeToTrash(full)) return;
+      auto sc = directorySize(full, cancel, progress);
+      if (sc.bytes == 0 && sc.files == 0) return;
+      ScanItem it;
+      it.path = full;
+      it.displayName = name;
+      it.detail = full;
+      it.bytes = sc.bytes;
+      it.fileCount = sc.files ? sc.files : 1;
+      it.selected = false;
+      g.items.push_back(std::move(it));
+    });
+  }
+  g.sortBySizeDescending();
+  return g;
+}
+
 ScanGroup scanCatalogEntry(const CatalogEntry& entry, std::atomic<bool>* cancel,
                            const ProgressFn& progress) {
   ScanGroup g;

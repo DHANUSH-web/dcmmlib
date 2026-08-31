@@ -15,6 +15,14 @@ TEST(Safety, DocumentsFolderProtectedNotRandomCache) {
   EXPECT_TRUE(dcmm::isProtectedPath(docs));
 }
 
+TEST(Safety, InstallerFileNames) {
+  EXPECT_TRUE(dcmm::isInstallerFileName("App.dmg"));
+  EXPECT_TRUE(dcmm::isInstallerFileName("Setup.PKG"));
+  EXPECT_TRUE(dcmm::isInstallerFileName("foo.mpkg"));
+  EXPECT_FALSE(dcmm::isInstallerFileName("notes.txt"));
+  EXPECT_FALSE(dcmm::isInstallerFileName("App.app"));
+}
+
 TEST(Safety, BrowserNames) {
   EXPECT_TRUE(dcmm::isBrowserCacheName("com.google.Chrome"));
   EXPECT_TRUE(dcmm::isBrowserCacheName("com.apple.Safari"));

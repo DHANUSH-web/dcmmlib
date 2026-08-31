@@ -32,6 +32,9 @@ ScanReport Engine::scanCatalog(const std::vector<CatalogEntry>& entries, const P
 ScanReport Engine::scanSmart(const ProgressFn& progress) {
   resetCancel();
   auto report = scanCatalog(smartCatalog(), progress);
+  auto installers = scanInstallerLeftovers(&cancel_, progress);
+  if (!installers.items.empty()) report.groups.push_back(std::move(installers));
+  report.sortBySizeDescending();
   for (auto& g : report.groups)
     for (auto& it : g.items) it.selected = true;
   lastScan_ = report;
