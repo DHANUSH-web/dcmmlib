@@ -99,7 +99,7 @@ TEST_F(CatalogEnv, SmartRecommendsCachesAsOneGroup) {
   bool foundChildName = false;
   bool foundNpm = false;
   for (const auto& g : r.groups) {
-    EXPECT_EQ(g.items.size(), 1u);
+    if (g.id != "installers") EXPECT_EQ(g.items.size(), 1u);
     EXPECT_TRUE(g.items[0].selected);
     if (g.id == userCacheGroupId()) {
       foundCaches = true;
@@ -113,6 +113,30 @@ TEST_F(CatalogEnv, SmartRecommendsCachesAsOneGroup) {
   EXPECT_TRUE(foundCaches);
   EXPECT_FALSE(foundChildName);
   EXPECT_FALSE(foundNpm);
+}
+
+TEST_F(CatalogEnv, SmartFindsInstallerLeftovers) {
+  fs::create_directories(home / "Downloads");
+  fs::create_directories(home / "Documents");
+  std::ofstream((home / "Downloads" / "App.dmg").string(), std::ios::binary) << std::string(1024, 'd');
+  std::ofstream((home / "Documents" / "Setup.pkg").string(), std::ios::binary) << std::string(512, 'p');
+  std::ofstream((home / "Downloads" / "notes.txt").string()) << "no";
+  dcmm::Engine e;
+  auto r = e.scanSmart();
+  const dcmm::ScanGroup* installers = nullptr;
+  for (const auto& g : r.groups)
+    if (g.id == "installers") installers = &g;
+  ASSERT_NE(installers, nullptr);
+  bool dmg = false, pkg = false, txt = false;
+  for (const auto& it : installers->items) {
+    EXPECT_TRUE(it.selected);
+    if (it.displayName == "App.dmg") dmg = true;
+    if (it.displayName == "Setup.pkg") pkg = true;
+    if (it.displayName == "notes.txt") txt = true;
+  }
+  EXPECT_TRUE(dmg);
+  EXPECT_TRUE(pkg);
+  EXPECT_FALSE(txt);
 }
 
 TEST_F(CatalogEnv, TrashCachesRootMovesChildrenNotFolder) {

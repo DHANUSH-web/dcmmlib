@@ -60,6 +60,17 @@ std::string lastComponent(const std::string& path) {
 
 }  // namespace
 
+bool isInstallerFileName(const std::string& name) {
+  const std::string n = lowerCopy(name);
+  static const char* ext[] = {".dmg", ".pkg", ".mpkg", ".msi", ".deb", ".rpm", nullptr};
+  for (int i = 0; ext[i]; ++i) {
+    auto e = ext[i];
+    auto elen = std::char_traits<char>::length(e);
+    if (n.size() >= elen && n.compare(n.size() - elen, elen, e) == 0) return true;
+  }
+  return false;
+}
+
 bool isSensitiveFileName(const std::string& name) {
   const std::string n = lowerCopy(name);
   static const char* exact[] = {"id_rsa",     "id_dsa", "id_ecdsa", "id_ed25519", ".env",
@@ -281,6 +292,14 @@ bool isSafeToTrash(const std::string& raw) {
   if (allowNamedChild(joinPath(home, "Library/Preferences"), true)) return true;
   if (allowNamedChild(joinPath(home, "Library/LaunchAgents"), true)) return true;
   if (allowNamedChild(joinPath(home, "Library/Containers"), false)) return true;
+
+  const auto downloads = joinPath(home, "Downloads");
+  const auto documents = joinPath(home, "Documents");
+  if (isInstallerFileName(lastComponent(path))) {
+    if ((hasPrefix(path, downloads) && path.size() != downloads.size()) ||
+        (hasPrefix(path, documents) && path.size() != documents.size()))
+      return true;
+  }
 
   // User-selected regular files (Large Files / Duplicates), never directories.
   if (isRegularFile(path) && hasPrefix(path, home)) return true;
