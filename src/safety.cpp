@@ -20,9 +20,11 @@ std::string norm(const std::string& p) {
   return r;
 }
 
+#if defined(_WIN32)
 char pathSepNorm(char c) {
   return (c == '/' || c == '\\') ? '\\' : c;
 }
+#endif
 
 bool hasPrefix(const std::string& path, const std::string& prefix) {
   if (prefix.empty() || path.size() < prefix.size()) return false;
