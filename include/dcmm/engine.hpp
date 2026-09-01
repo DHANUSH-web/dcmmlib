@@ -35,6 +35,8 @@ class Engine {
   std::vector<DuplicateGroup> findDuplicates(const DuplicateOptions& opt,
                                              const ProgressFn& progress = nullptr);
   std::vector<SpaceNode> spaceLens(const ProgressFn& progress = nullptr);
+  std::vector<SpaceNode> spaceLensChildren(const std::string& dir,
+                                           const ProgressFn& progress = nullptr);
 
   std::vector<InstalledApp> listApps(const ProgressFn& progress = nullptr);
   void attachLeftovers(InstalledApp& app);
