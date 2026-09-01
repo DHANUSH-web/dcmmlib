@@ -42,4 +42,28 @@ std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
   return nodes;
 }
 
+std::vector<SpaceNode> Engine::spaceLensChildren(const std::string& dir, const ProgressFn& progress) {
+  resetCancel();
+  std::vector<SpaceNode> nodes;
+  if (dir.empty()) return nodes;
+  forEachChild(dir, [&](const std::string& name, const std::string& full, bool isDir) {
+    if (cancel_.load()) return;
+    if (name == ".Trash" || name == ".DS_Store") return;
+    auto sc = directoryAllocatedSize(full, &cancel_, progress);
+    if (sc.bytes == 0) return;
+    SpaceNode n;
+    n.path = full;
+    n.name = name;
+    n.bytes = sc.bytes;
+    n.isDir = isDir;
+    nodes.push_back(std::move(n));
+  });
+  std::sort(nodes.begin(), nodes.end(), [](const SpaceNode& a, const SpaceNode& b) {
+    if (a.bytes != b.bytes) return a.bytes > b.bytes;
+    return a.name < b.name;
+  });
+  if (nodes.size() > 80) nodes.resize(80);
+  return nodes;
+}
+
 }  // namespace dcmm
