@@ -24,6 +24,8 @@ std::vector<LargeFile> Engine::findLargeFiles(const LargeFileOptions& opt,
   for (const auto& root : opt.roots) {
     auto p = expandPath(root);
     std::error_code ec;
+    auto resolved = fs::weakly_canonical(p, ec);
+    if (!ec && !resolved.empty()) p = resolved.string();
     if (!fs::is_directory(p, ec)) continue;
     fs::recursive_directory_iterator it(p, fs::directory_options::skip_permission_denied, ec);
     for (; it != fs::recursive_directory_iterator() && !ec; it.increment(ec)) {
