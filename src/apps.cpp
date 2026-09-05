@@ -1,7 +1,7 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
 #include "dcmm/safety.hpp"
-#include "walk.hpp"
+#include "dcmm/walk.hpp"
 
 #include <algorithm>
 #include <fstream>
