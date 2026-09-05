@@ -1,6 +1,6 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
-#include "walk.hpp"
+#include "dcmm/walk.hpp"
 
 #include <algorithm>
 #include <filesystem>
