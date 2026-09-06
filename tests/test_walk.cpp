@@ -1,5 +1,5 @@
 #include "dcmm/path.hpp"
-#include "walk.hpp"
+#include "dcmm/walk.hpp"
 
 #include <gtest/gtest.h>
 

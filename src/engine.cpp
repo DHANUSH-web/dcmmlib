@@ -1,6 +1,6 @@
 #include "dcmm/engine.hpp"
 
-#include "catalog.hpp"
+#include "dcmm/catalog.hpp"
 
 #include <chrono>
 

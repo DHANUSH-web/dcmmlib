@@ -59,8 +59,6 @@ target_include_directories(dcmm
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 if(APPLE)
@@ -104,7 +102,6 @@ if(DCMM_BUILD_TESTS)
   )
   target_link_libraries(dcmm-tests PRIVATE dcmm GTest::gtest_main)
   target_include_directories(dcmm-tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/tests)
   include(GoogleTest)
   gtest_discover_tests(dcmm-tests)

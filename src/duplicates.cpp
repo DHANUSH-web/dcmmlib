@@ -1,7 +1,7 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
-#include "sha256.hpp"
-#include "walk.hpp"
+#include "dcmm/sha256.hpp"
+#include "dcmm/walk.hpp"
 
 #include <algorithm>
 #include <cstring>
