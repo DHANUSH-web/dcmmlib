@@ -7,6 +7,8 @@
 namespace dcmm {
 
 std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
   std::vector<SpaceNode> nodes;
   const std::string home = homeDirectory();
   auto add = [&](const std::string& name, const std::string& full, bool isDir) {
@@ -43,6 +45,7 @@ std::vector<SpaceNode> Engine::spaceLens(const ProgressFn& progress) {
 }
 
 std::vector<SpaceNode> Engine::spaceLensChildren(const std::string& dir, const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   std::vector<SpaceNode> nodes;
   if (dir.empty()) return nodes;

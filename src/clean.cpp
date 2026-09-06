@@ -84,6 +84,7 @@ std::vector<std::string> expandTrashTargets(const std::string& p) {
 }
 
 CleanResult Engine::trashPaths(const std::vector<std::string>& paths) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   CleanResult result;
   for (const auto& p : paths) {
     auto targets = expandTrashTargets(p);
@@ -114,6 +115,9 @@ CleanResult Engine::trashPaths(const std::vector<std::string>& paths) {
   return result;
 }
 
-CleanResult Engine::trashSelected() { return trashPaths(lastScan_.selectedPaths()); }
+CleanResult Engine::trashSelected() {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  return trashPaths(lastScan_.selectedPaths());
+}
 
 }  // namespace dcmm

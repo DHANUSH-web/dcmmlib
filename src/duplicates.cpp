@@ -58,6 +58,8 @@ void collect(const fs::path& dir, uint64_t minBytes, uint64_t maxFiles,
 
 std::vector<DuplicateGroup> Engine::findDuplicates(const DuplicateOptions& opt,
                                                    const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
   std::unordered_map<uint64_t, std::vector<std::string>> bySize;
   uint64_t seen = 0;
   for (const auto& root : opt.roots) {

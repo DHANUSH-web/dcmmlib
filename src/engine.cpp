@@ -14,6 +14,7 @@ void Engine::resetCancel() { cancel_.store(false); }
 bool Engine::cancelled() const { return cancel_.load(); }
 
 ScanReport Engine::scanCatalog(const std::vector<CatalogEntry>& entries, const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   ScanReport report;
   auto t0 = std::chrono::steady_clock::now();
   for (const auto& e : entries) {
@@ -30,6 +31,7 @@ ScanReport Engine::scanCatalog(const std::vector<CatalogEntry>& entries, const P
 }
 
 ScanReport Engine::scanSmart(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   auto report = scanCatalog(smartCatalog(), progress);
   auto installers = scanInstallerLeftovers(&cancel_, progress);
@@ -42,11 +44,13 @@ ScanReport Engine::scanSmart(const ProgressFn& progress) {
 }
 
 ScanReport Engine::scanJunk(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   return scanCatalog(junkCatalog(), progress);
 }
 
 ScanReport Engine::scanPrivacy(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   return scanCatalog(privacyCatalog(), progress);
 }

@@ -214,6 +214,7 @@ void measurePaths(const std::vector<std::string>& paths, uint64_t& bytes, uint64
 }  // namespace
 
 std::vector<MaintenanceTask> Engine::maintenanceTasks() const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   return {
       {"empty_trash", "Empty Trash",
        "Permanently erase items currently in Trash.", "This cannot be undone."},
@@ -228,6 +229,7 @@ std::vector<MaintenanceTask> Engine::maintenanceTasks() const {
 }
 
 MaintenanceResult Engine::previewMaintenance(const std::string& id) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   MaintenanceResult r;
   if (id == "empty_trash") {
     auto m = measureTrash();
@@ -269,6 +271,7 @@ MaintenanceResult Engine::previewMaintenance(const std::string& id) const {
 }
 
 MaintenanceResult Engine::runMaintenance(const std::string& id) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto preview = previewMaintenance(id);
   if (preview.nothingToDo) return preview;
 
