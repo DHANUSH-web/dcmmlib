@@ -110,6 +110,8 @@ ScanItem leftoverItem(const std::string& path) {
 }  // namespace
 
 std::vector<InstalledApp> Engine::listApps(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
   std::vector<InstalledApp> apps;
   std::vector<std::string> roots;
 #if defined(__APPLE__)
@@ -171,6 +173,7 @@ std::vector<InstalledApp> Engine::listApps(const ProgressFn& progress) {
 }
 
 void Engine::attachLeftovers(InstalledApp& app) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   app.leftovers.clear();
   const std::string home = homeDirectory();
   auto consider = [&](const std::string& path) {

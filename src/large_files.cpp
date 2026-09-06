@@ -12,6 +12,8 @@ namespace fs = std::filesystem;
 
 std::vector<LargeFile> Engine::findLargeFiles(const LargeFileOptions& opt,
                                               const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
   struct Node {
     uint64_t bytes = 0;
     LargeFile file;

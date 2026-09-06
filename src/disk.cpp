@@ -19,6 +19,7 @@
 namespace dcmm {
 
 DiskStats Engine::disk(const std::string& path) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   DiskStats s;
   const std::string p = path.empty() ? std::string("/") : path;
   s.mountPoint = p;
@@ -55,6 +56,7 @@ DiskStats Engine::disk(const std::string& path) const {
 }
 
 MemoryStats Engine::memory() const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   MemoryStats m;
 #if defined(_WIN32)
   MEMORYSTATUSEX st{};

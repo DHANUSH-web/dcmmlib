@@ -99,6 +99,7 @@ if(DCMM_BUILD_TESTS)
     tests/test_c_abi.cpp
     tests/test_disk.cpp
     tests/test_maintenance.cpp
+    tests/test_thread.cpp
   )
   target_link_libraries(dcmm-tests PRIVATE dcmm GTest::gtest_main)
   target_include_directories(dcmm-tests PRIVATE

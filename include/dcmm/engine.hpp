@@ -3,6 +3,7 @@
 #include "dcmm/types.hpp"
 
 #include <atomic>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,9 @@ class Engine {
   ScanReport scanCatalog(const std::vector<CatalogEntry>& entries, const ProgressFn& progress);
 
   std::atomic<bool> cancel_{false};
+  /// Serializes work on this instance. Other Engine objects run in parallel.
+  /// cancel() does not take this lock so a scan can be stopped while it is held.
+  mutable std::recursive_mutex mu_;
   ScanReport lastScan_;
 };
 
