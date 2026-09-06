@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <filesystem>
 #include <system_error>
+#include <vector>
 
 #if !defined(_WIN32)
 #include <sys/stat.h>
@@ -31,6 +32,53 @@ uint64_t allocatedBytes(const fs::path& p, std::error_code& ec) {
 #endif
 }
 
+bool skipGitSvn(const std::string& name) { return name == ".git" || name == ".svn"; }
+
+/// One failed subdirectory must not abort the rest of the tree. recursive_directory_iterator
+/// stops the whole walk when increment() sets an error, even with skip_permission_denied.
+template <typename SkipDir, typename OnFile>
+void walkRegularFiles(const fs::path& root, std::atomic<bool>* cancel, SkipDir skipDir,
+                      OnFile&& onFile) {
+  std::error_code ec;
+  auto st = fs::symlink_status(root, ec);
+  if (ec) return;
+  if (fs::is_symlink(st)) return;
+  if (fs::is_regular_file(st)) {
+    onFile(root);
+    return;
+  }
+  if (!fs::is_directory(st)) return;
+
+  std::vector<fs::path> dirs;
+  dirs.push_back(root);
+  const auto opts = fs::directory_options::skip_permission_denied;
+  while (!dirs.empty()) {
+    if (cancel && cancel->load()) return;
+    fs::path dir = std::move(dirs.back());
+    dirs.pop_back();
+    std::error_code dec;
+    fs::directory_iterator it(dir, opts, dec);
+    if (dec) continue;
+    for (; it != fs::directory_iterator(); it.increment(dec)) {
+      if (dec) {
+        dec.clear();
+        break;
+      }
+      if (cancel && cancel->load()) return;
+      const auto& entry = *it;
+      std::error_code lec;
+      if (entry.is_symlink(lec)) continue;
+      if (entry.is_directory(lec)) {
+        auto name = entry.path().filename().string();
+        if (skipDir(name)) continue;
+        dirs.push_back(entry.path());
+        continue;
+      }
+      if (entry.is_regular_file(lec)) onFile(entry.path());
+    }
+  }
+}
+
 }  // namespace
 
 bool skipDirectoryName(const std::string& name) {
@@ -43,82 +91,32 @@ bool skipDirectoryName(const std::string& name) {
 SizeCount directorySize(const std::string& path, std::atomic<bool>* cancel,
                         const ProgressFn& progress) {
   SizeCount out;
-  std::error_code ec;
-  fs::path root(path);
-  auto st = fs::symlink_status(root, ec);
-  if (ec) return out;
-  if (fs::is_symlink(st)) return out;
-  if (fs::is_regular_file(st)) {
-    out.bytes = fs::file_size(root, ec);
-    out.files = 1;
-    return out;
-  }
-  if (!fs::is_directory(st)) return out;
-
-  const auto opts = fs::directory_options::skip_permission_denied;
-  for (fs::recursive_directory_iterator it(root, opts, ec), end; it != end && !ec; it.increment(ec)) {
-    if (cancel && cancel->load()) break;
-    const auto& entry = *it;
-    std::error_code lec;
-    if (entry.is_symlink(lec)) continue;
-    if (entry.is_directory(lec)) {
-      auto name = entry.path().filename().string();
-      if (name == ".git" || name == ".svn") {
-        it.disable_recursion_pending();
-        continue;
-      }
-      if (progress && (out.files % 64 == 0)) progress(entry.path().string(), out.files, out.bytes);
-      continue;
-    }
-    if (entry.is_regular_file(lec)) {
-      auto sz = entry.file_size(lec);
-      if (!lec) {
+  walkRegularFiles(
+      fs::path(path), cancel, skipGitSvn,
+      [&](const fs::path& file) {
+        std::error_code lec;
+        auto sz = fs::file_size(file, lec);
+        if (lec) return;
         out.bytes += sz;
         out.files += 1;
-      }
-    }
-  }
+        if (progress && (out.files % 64 == 0)) progress(file.string(), out.files, out.bytes);
+      });
   return out;
 }
 
 SizeCount directoryAllocatedSize(const std::string& path, std::atomic<bool>* cancel,
                                  const ProgressFn& progress) {
   SizeCount out;
-  std::error_code ec;
-  fs::path root(path);
-  auto st = fs::symlink_status(root, ec);
-  if (ec) return out;
-  if (fs::is_symlink(st)) return out;
-  if (fs::is_regular_file(st)) {
-    out.bytes = allocatedBytes(root, ec);
-    out.files = ec ? 0 : 1;
-    return out;
-  }
-  if (!fs::is_directory(st)) return out;
-
-  const auto opts = fs::directory_options::skip_permission_denied;
-  for (fs::recursive_directory_iterator it(root, opts, ec), end; it != end && !ec; it.increment(ec)) {
-    if (cancel && cancel->load()) break;
-    const auto& entry = *it;
-    std::error_code lec;
-    if (entry.is_symlink(lec)) continue;
-    if (entry.is_directory(lec)) {
-      auto name = entry.path().filename().string();
-      if (skipDirectoryName(name)) {
-        it.disable_recursion_pending();
-        continue;
-      }
-      if (progress && (out.files % 64 == 0)) progress(entry.path().string(), out.files, out.bytes);
-      continue;
-    }
-    if (entry.is_regular_file(lec)) {
-      auto sz = allocatedBytes(entry.path(), lec);
-      if (!lec) {
+  walkRegularFiles(
+      fs::path(path), cancel, skipDirectoryName,
+      [&](const fs::path& file) {
+        std::error_code lec;
+        auto sz = allocatedBytes(file, lec);
+        if (lec) return;
         out.bytes += sz;
         out.files += 1;
-      }
-    }
-  }
+        if (progress && (out.files % 64 == 0)) progress(file.string(), out.files, out.bytes);
+      });
   return out;
 }
 
