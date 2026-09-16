@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dcmm/types.hpp"
+#include "dcmm/vscode.hpp"
 
 #include <atomic>
 #include <mutex>
@@ -41,6 +42,11 @@ class Engine {
 
   std::vector<InstalledApp> listApps(const ProgressFn& progress = nullptr);
   void attachLeftovers(InstalledApp& app);
+
+  std::vector<VsCodeInstall> listVsCode(const ProgressFn& progress = nullptr);
+  std::vector<VsCodeExtension> listVsCodeExtensions(VsCodeEdition edition,
+                                                    const ProgressFn& progress = nullptr);
+  CleanResult uninstallVsCode(VsCodeEdition edition);
 
   DiskStats disk(const std::string& path = {}) const;
   MemoryStats memory() const;

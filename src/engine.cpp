@@ -1,6 +1,7 @@
 #include "dcmm/engine.hpp"
 
 #include "dcmm/catalog.hpp"
+#include "dcmm/vscode.hpp"
 
 #include <chrono>
 
@@ -53,6 +54,19 @@ ScanReport Engine::scanPrivacy(const ProgressFn& progress) {
   std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   return scanCatalog(privacyCatalog(), progress);
+}
+
+std::vector<VsCodeInstall> Engine::listVsCode(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return vsCodeInstalls(homeDirectory(), &cancel_, progress);
+}
+
+std::vector<VsCodeExtension> Engine::listVsCodeExtensions(VsCodeEdition edition,
+                                                         const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return vsCodeExtensions(edition, homeDirectory(), &cancel_, progress);
 }
 
 }  // namespace dcmm

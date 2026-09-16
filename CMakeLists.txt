@@ -40,6 +40,7 @@ set(DCMM_SOURCES
   src/space.cpp
   src/disk.cpp
   src/apps.cpp
+  src/vscode.cpp
   src/maintenance.cpp
   src/c_abi.cpp
 )
@@ -100,6 +101,7 @@ if(DCMM_BUILD_TESTS)
     tests/test_disk.cpp
     tests/test_maintenance.cpp
     tests/test_thread.cpp
+    tests/test_vscode.cpp
   )
   target_link_libraries(dcmm-tests PRIVATE dcmm GTest::gtest_main)
   target_include_directories(dcmm-tests PRIVATE
