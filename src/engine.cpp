@@ -1,6 +1,7 @@
 #include "dcmm/engine.hpp"
 
 #include "dcmm/catalog.hpp"
+#include "dcmm/cursor.hpp"
 #include "dcmm/vscode.hpp"
 
 #include <chrono>
@@ -67,6 +68,18 @@ std::vector<VsCodeExtension> Engine::listVsCodeExtensions(VsCodeEdition edition,
   std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   return vsCodeExtensions(edition, homeDirectory(), &cancel_, progress);
+}
+
+std::vector<CursorInstall> Engine::listCursor(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return cursorInstalls(homeDirectory(), &cancel_, progress);
+}
+
+std::vector<CursorExtension> Engine::listCursorExtensions(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return cursorExtensions(homeDirectory(), &cancel_, progress);
 }
 
 }  // namespace dcmm

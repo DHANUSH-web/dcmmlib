@@ -5,4 +5,5 @@
 #include "dcmm/path.hpp"
 #include "dcmm/safety.hpp"
 #include "dcmm/types.hpp"
+#include "dcmm/cursor.hpp"
 #include "dcmm/vscode.hpp"
