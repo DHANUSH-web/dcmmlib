@@ -1,6 +1,7 @@
 #include "dcmm/engine.hpp"
 
 #include "dcmm/catalog.hpp"
+#include "dcmm/antigravity.hpp"
 #include "dcmm/cursor.hpp"
 #include "dcmm/vscode.hpp"
 
@@ -80,6 +81,18 @@ std::vector<CursorExtension> Engine::listCursorExtensions(const ProgressFn& prog
   std::lock_guard<std::recursive_mutex> lock(mu_);
   resetCancel();
   return cursorExtensions(homeDirectory(), &cancel_, progress);
+}
+
+std::vector<AntigravityInstall> Engine::listAntigravity(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return antigravityInstalls(homeDirectory(), &cancel_, progress);
+}
+
+std::vector<AntigravityExtension> Engine::listAntigravityExtensions(const ProgressFn& progress) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  return antigravityExtensions(homeDirectory(), &cancel_, progress);
 }
 
 }  // namespace dcmm

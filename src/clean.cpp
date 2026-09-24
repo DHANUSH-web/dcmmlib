@@ -1,6 +1,7 @@
 #include "dcmm/engine.hpp"
 #include "dcmm/path.hpp"
 #include "dcmm/safety.hpp"
+#include "dcmm/antigravity.hpp"
 #include "dcmm/cursor.hpp"
 #include "dcmm/vscode.hpp"
 #include "dcmm/walk.hpp"
@@ -157,6 +158,36 @@ CleanResult Engine::uninstallCursor() {
   resetCancel();
   CleanResult result;
   for (const auto& p : cursorNukePaths()) {
+    if (cancel_.load()) break;
+    if (p.empty() || isProtectedPath(p)) {
+      result.failedItems++;
+      result.errors.push_back("Blocked (protected path): " + p);
+      continue;
+    }
+    auto sc = directoryAllocatedSize(p, &cancel_, nullptr);
+    std::string err;
+    bool ok = false;
+#if defined(_WIN32)
+    ok = trashDir().empty() ? moveToTrashWin(p, err) : moveToTrashPosix(p, err);
+#else
+    ok = moveToTrashPosix(p, err);
+#endif
+    if (!ok) {
+      result.failedItems++;
+      result.errors.push_back(p + ": " + err);
+      continue;
+    }
+    result.trashedItems++;
+    result.trashedBytes += sc.bytes;
+  }
+  return result;
+}
+
+CleanResult Engine::uninstallAntigravity() {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  resetCancel();
+  CleanResult result;
+  for (const auto& p : antigravityNukePaths()) {
     if (cancel_.load()) break;
     if (p.empty() || isProtectedPath(p)) {
       result.failedItems++;
