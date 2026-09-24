@@ -2,9 +2,9 @@
 
 #include "dcmm/path.hpp"
 #include "dcmm/walk.hpp"
+#include "extension_manifest.hpp"
 
 #include <cstdlib>
-#include <fstream>
 #include <utility>
 #include <vector>
 
@@ -16,46 +16,6 @@ struct RootSpec {
   const char* label;
   std::string path;
 };
-
-std::string jsonStringField(const std::string& body, const char* key) {
-  const std::string pat = std::string("\"") + key + "\"";
-  auto pos = body.find(pat);
-  if (pos == std::string::npos) return {};
-  pos = body.find(':', pos + pat.size());
-  if (pos == std::string::npos) return {};
-  pos = body.find('"', pos + 1);
-  if (pos == std::string::npos) return {};
-  ++pos;
-  std::string out;
-  for (; pos < body.size(); ++pos) {
-    char c = body[pos];
-    if (c == '"') break;
-    if (c == '\\' && pos + 1 < body.size()) {
-      out.push_back(body[++pos]);
-      continue;
-    }
-    out.push_back(c);
-  }
-  return out;
-}
-
-std::string readSmallFile(const std::string& path) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) return {};
-  std::string s(64 * 1024, '\0');
-  in.read(s.data(), static_cast<std::streamsize>(s.size()));
-  s.resize(static_cast<std::size_t>(in.gcount()));
-  return s;
-}
-
-std::string extensionIcon(const std::string& dir) {
-  const char* names[] = {"icon.png", "logo.png", nullptr};
-  for (int i = 0; names[i]; ++i) {
-    auto p = joinPath(dir, names[i]);
-    if (isRegularFile(p)) return p;
-  }
-  return {};
-}
 
 std::vector<RootSpec> rootSpecs(const std::string& home) {
   return {
@@ -141,11 +101,12 @@ std::vector<CursorExtension> cursorExtensions(const std::string& home, std::atom
     if (name.empty() || name[0] == '.') return;
     CursorExtension ext;
     ext.path = full;
-    ext.iconPath = extensionIcon(full);
-    auto json = readSmallFile(joinPath(full, "package.json"));
-    ext.name = jsonStringField(json, "displayName");
-    if (ext.name.empty() || (ext.name.size() >= 2 && ext.name.front() == '%' && ext.name.back() == '%'))
-      ext.name = name;
+    auto m = extjson::read(full, name);
+    ext.name = std::move(m.name);
+    ext.version = std::move(m.version);
+    ext.publisher = std::move(m.publisher);
+    ext.repositoryUrl = std::move(m.repositoryUrl);
+    ext.iconPath = std::move(m.iconPath);
     ext.bytes = allocatedOrZero(full, cancel, progress);
     if (progress) progress(full, out.size() + 1, ext.bytes);
     out.push_back(std::move(ext));

@@ -45,12 +45,13 @@ TEST_F(AntigravityHome, OmitsMissingPaths) {
 }
 
 TEST_F(AntigravityHome, ExtensionsFirstWhenPresent) {
-  fs::create_directories(home / ".antigravity-ide" / "extensions" / "pub.ext-1.0.0");
+  auto extDir = home / ".antigravity-ide" / "extensions" / "pub.ext-1.0.0";
+  fs::create_directories(extDir / "media");
   fs::create_directories(home / ".antigravity-ide-server");
-  std::ofstream((home / ".antigravity-ide" / "extensions" / "pub.ext-1.0.0" / "package.json").string())
-      << R"({"displayName":"Pub Ext"})";
-  std::ofstream((home / ".antigravity-ide" / "extensions" / "pub.ext-1.0.0" / "icon.png").string())
-      << "png";
+  std::ofstream((extDir / "package.json").string())
+      << R"({"name":"pub-ext","displayName":"Pub Ext","version":"3.0.0","publisher":"pub",)"
+         R"("icon":"media/logo.png","repository":{"url":"https://example.com/agy"}})";
+  std::ofstream((extDir / "media" / "logo.png").string()) << "png";
   auto items = dcmm::antigravityItems(home.string());
   ASSERT_GE(items.size(), 2u);
   EXPECT_TRUE(items[0].extensions);
@@ -58,7 +59,10 @@ TEST_F(AntigravityHome, ExtensionsFirstWhenPresent) {
   auto exts = dcmm::antigravityExtensions(home.string());
   ASSERT_EQ(exts.size(), 1u);
   EXPECT_EQ(exts[0].name, "Pub Ext");
-  EXPECT_FALSE(exts[0].iconPath.empty());
+  EXPECT_EQ(exts[0].version, "3.0.0");
+  EXPECT_EQ(exts[0].publisher, "pub");
+  EXPECT_EQ(exts[0].repositoryUrl, "https://example.com/agy");
+  EXPECT_EQ(exts[0].iconPath, (extDir / "media" / "logo.png").string());
 }
 
 TEST_F(AntigravityHome, EmptyWhenNothingInstalled) {
