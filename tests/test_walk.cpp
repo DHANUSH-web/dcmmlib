@@ -82,3 +82,28 @@ TEST(Walk, AllocatedSizeDoesNotExceedPaddedLogical) {
   EXPECT_LE(alloc.bytes, 16u * 1024u);
   fs::remove_all(root);
 }
+
+TEST(Walk, AllocatedSizeAllIncludesNodeModules) {
+  auto root = fs::temp_directory_path() / "dcmm-walk-nm";
+  fs::remove_all(root);
+  fs::create_directories(root / "node_modules" / "pkg");
+  fs::create_directories(root / "src");
+  {
+    std::ofstream((root / "node_modules" / "pkg" / "a.bin").string()) << std::string(4000, 'n');
+    std::ofstream((root / "src" / "b.bin").string()) << std::string(100, 's');
+  }
+  auto skipped = dcmm::directoryAllocatedSize(root.string());
+  auto all = dcmm::directoryAllocatedSizeAll(root.string());
+  EXPECT_GT(all.bytes, skipped.bytes);
+  auto m = dcmm::spaceLensMeasure(root.string());
+  EXPECT_EQ(m.bytes, all.bytes);
+  bool sawNm = false;
+  for (const auto& c : m.children) {
+    if (c.name == "node_modules") {
+      sawNm = true;
+      EXPECT_GT(c.bytes, 0u);
+    }
+  }
+  EXPECT_TRUE(sawNm);
+  fs::remove_all(root);
+}

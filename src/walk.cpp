@@ -2,9 +2,11 @@
 
 #include "dcmm/path.hpp"
 
+#include <algorithm>
 #include <cerrno>
 #include <filesystem>
 #include <system_error>
+#include <unordered_map>
 #include <vector>
 
 #if !defined(_WIN32)
@@ -117,6 +119,76 @@ SizeCount directoryAllocatedSize(const std::string& path, std::atomic<bool>* can
         out.files += 1;
         if (progress && (out.files % 64 == 0)) progress(file.string(), out.files, out.bytes);
       });
+  return out;
+}
+
+static bool neverSkipDir(const std::string&) { return false; }
+
+SizeCount directoryAllocatedSizeAll(const std::string& path, std::atomic<bool>* cancel,
+                                    const ProgressFn& progress) {
+  SizeCount out;
+  walkRegularFiles(
+      fs::path(path), cancel, neverSkipDir,
+      [&](const fs::path& file) {
+        std::error_code lec;
+        auto sz = allocatedBytes(file, lec);
+        if (lec) return;
+        out.bytes += sz;
+        out.files += 1;
+        if (progress && (out.files % 64 == 0)) progress(file.string(), out.files, out.bytes);
+      });
+  return out;
+}
+
+SpaceMeasure spaceLensMeasure(const std::string& dir, std::atomic<bool>* cancel,
+                              const ProgressFn& progress) {
+  SpaceMeasure out;
+  fs::path root(dir);
+  std::error_code stEc;
+  auto st = fs::symlink_status(root, stEc);
+  if (stEc) return out;
+  if (fs::is_regular_file(st)) {
+    std::error_code lec;
+    out.bytes = allocatedBytes(root, lec);
+    return out;
+  }
+  if (!fs::is_directory(st) || fs::is_symlink(st)) return out;
+
+  std::unordered_map<std::string, std::size_t> index;
+  forEachChild(dir, [&](const std::string& name, const std::string& full, bool isDir) {
+    if (name == ".DS_Store") return;
+    SpaceNode n;
+    n.path = full;
+    n.name = name;
+    n.isDir = isDir;
+    n.bytes = 0;
+    index[name] = out.children.size();
+    out.children.push_back(std::move(n));
+  });
+
+  uint64_t files = 0;
+  walkRegularFiles(root, cancel, neverSkipDir, [&](const fs::path& file) {
+    std::error_code lec;
+    auto sz = allocatedBytes(file, lec);
+    if (lec) return;
+    out.bytes += sz;
+    files += 1;
+    fs::path rel = file.lexically_relative(root);
+    if (rel.empty() || rel == ".") return;
+    auto it = rel.begin();
+    if (it == rel.end()) return;
+    auto kid = index.find(it->string());
+    if (kid != index.end()) out.children[kid->second].bytes += sz;
+    if (progress && (files % 64 == 0)) progress(file.string(), files, out.bytes);
+  });
+
+  out.children.erase(std::remove_if(out.children.begin(), out.children.end(),
+                                    [](const SpaceNode& n) { return n.bytes == 0; }),
+                     out.children.end());
+  std::sort(out.children.begin(), out.children.end(), [](const SpaceNode& a, const SpaceNode& b) {
+    if (a.bytes != b.bytes) return a.bytes > b.bytes;
+    return a.name < b.name;
+  });
   return out;
 }
 

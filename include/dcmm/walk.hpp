@@ -24,6 +24,18 @@ SizeCount directorySize(const std::string& path, std::atomic<bool>* cancel = nul
 SizeCount directoryAllocatedSize(const std::string& path, std::atomic<bool>* cancel = nullptr,
                                  const ProgressFn& progress = nullptr);
 
+/// Allocated size of the whole tree. Does not skip node_modules, .git, etc.
+SizeCount directoryAllocatedSizeAll(const std::string& path, std::atomic<bool>* cancel = nullptr,
+                                    const ProgressFn& progress = nullptr);
+
+/// One walk of `dir`: total allocated bytes and per-immediate-child totals. No skip list.
+struct SpaceMeasure {
+  uint64_t bytes = 0;
+  std::vector<SpaceNode> children;
+};
+SpaceMeasure spaceLensMeasure(const std::string& dir, std::atomic<bool>* cancel = nullptr,
+                              const ProgressFn& progress = nullptr);
+
 void forEachChild(const std::string& dir,
                   const std::function<void(const std::string& name, const std::string& full,
                                            bool isDir)>& fn);
