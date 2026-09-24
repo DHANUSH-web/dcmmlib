@@ -14,6 +14,9 @@ enum class VsCodeEdition { Stable, Insiders };
 struct VsCodeExtension {
   std::string path;
   std::string name;
+  std::string version;
+  std::string publisher;
+  std::string repositoryUrl;
   std::string iconPath;
   uint64_t bytes = 0;
 };

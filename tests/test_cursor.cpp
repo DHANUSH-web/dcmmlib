@@ -44,11 +44,13 @@ TEST_F(CursorHome, OmitsMissingPaths) {
 }
 
 TEST_F(CursorHome, ExtensionsFirstWhenPresent) {
-  fs::create_directories(home / ".cursor" / "extensions" / "pub.ext-1.0.0");
+  auto extDir = home / ".cursor" / "extensions" / "pub.ext-1.0.0";
+  fs::create_directories(extDir);
   fs::create_directories(home / ".cursor-shared");
-  std::ofstream((home / ".cursor" / "extensions" / "pub.ext-1.0.0" / "package.json").string())
-      << R"({"displayName":"Pub Ext"})";
-  std::ofstream((home / ".cursor" / "extensions" / "pub.ext-1.0.0" / "icon.png").string()) << "png";
+  std::ofstream((extDir / "package.json").string())
+      << R"({"name":"pub-ext","displayName":"Pub Ext","version":"2.1.0","publisher":"pub",)"
+         R"("icon":"icon.png","repository":"https://example.com/cursor-ext"})";
+  std::ofstream((extDir / "icon.png").string()) << "png";
   auto items = dcmm::cursorItems(home.string());
   ASSERT_GE(items.size(), 2u);
   EXPECT_TRUE(items[0].extensions);
@@ -56,7 +58,10 @@ TEST_F(CursorHome, ExtensionsFirstWhenPresent) {
   auto exts = dcmm::cursorExtensions(home.string());
   ASSERT_EQ(exts.size(), 1u);
   EXPECT_EQ(exts[0].name, "Pub Ext");
-  EXPECT_FALSE(exts[0].iconPath.empty());
+  EXPECT_EQ(exts[0].version, "2.1.0");
+  EXPECT_EQ(exts[0].publisher, "pub");
+  EXPECT_EQ(exts[0].repositoryUrl, "https://example.com/cursor-ext");
+  EXPECT_EQ(exts[0].iconPath, (extDir / "icon.png").string());
 }
 
 TEST_F(CursorHome, EmptyWhenNothingInstalled) {
