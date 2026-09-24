@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dcmm/antigravity.hpp"
 #include "dcmm/cursor.hpp"
 #include "dcmm/types.hpp"
 #include "dcmm/vscode.hpp"
@@ -52,6 +53,10 @@ class Engine {
   std::vector<CursorInstall> listCursor(const ProgressFn& progress = nullptr);
   std::vector<CursorExtension> listCursorExtensions(const ProgressFn& progress = nullptr);
   CleanResult uninstallCursor();
+
+  std::vector<AntigravityInstall> listAntigravity(const ProgressFn& progress = nullptr);
+  std::vector<AntigravityExtension> listAntigravityExtensions(const ProgressFn& progress = nullptr);
+  CleanResult uninstallAntigravity();
 
   DiskStats disk(const std::string& path = {}) const;
   MemoryStats memory() const;
